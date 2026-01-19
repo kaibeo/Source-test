@@ -1,32 +1,37 @@
--- ===== AUTO DUNGEON + FAST ATTACK (ONE BUTTON | STABLE) =====
+-- ===== AUTO DUNGEON + FAST ATTACK | WINDUI =====
+-- One Button | Stable | Green Priority | Destroy = Flag Only
 
--- UI LIB
-local Library = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua"
+-- LOAD WINDUI
+local WindUI = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/Footagesus/WindUI/refs/heads/main/main_example.lua"
 ))()
 
-local Window = Library:CreateWindow({
+-- WINDOW
+local Window = WindUI:CreateWindow({
     Title = "Auto Dungeon",
-    Center = true,
-    AutoShow = true,
+    Author = "Auto Script",
+    Folder = "AutoDungeon",
+    Size = UDim2.fromOffset(460, 360)
 })
 
-local MainTab = Window:AddTab("Main")
-local StatusTab = Window:AddTab("Status")
+local MainTab = Window:CreateTab("Main", "home")
+local StatusTab = Window:CreateTab("Status", "info")
 
+-- GLOBAL SWITCH
 getgenv().AutoDungeon = false
 getgenv().FastAttack = false
 
-MainTab:AddToggle("AutoDungeon", {
-    Text = "AUTO DUNGEON",
+-- UI TOGGLE (ONE BUTTON)
+MainTab:CreateToggle({
+    Name = "AUTO DUNGEON",
     Default = false,
     Callback = function(v)
         getgenv().AutoDungeon = v
-        getgenv().FastAttack = v -- 🔗 bật dungeon = bật fast attack
+        getgenv().FastAttack = v
     end
 })
 
-local StatusLabel = StatusTab:AddLabel("STATE: OFF")
+local StatusLabel = StatusTab:CreateLabel("STATE: OFF")
 
 -- ===== SERVICES =====
 local Players = game:GetService("Players")
@@ -38,8 +43,8 @@ local LP = Players.LocalPlayer
 local HEIGHT_NORMAL = 20
 local HEIGHT_GREEN  = 10
 local MOVE_SPEED = 0.6
-local TELEPORT_DISTANCE = 180
 local GREEN_HALF_RANGE = 500
+local TELEPORT_DISTANCE = 180
 local SCAN_INTERVAL = 0.15
 
 -- ===== STATE =====
@@ -47,6 +52,7 @@ local State = "OFF"
 local lastGreenPos = nil
 local lastHRPPos = nil
 local scanTick = 0
+local destroyActive = false
 
 -- ===== SAFE GET =====
 local function getHRPandHum()
@@ -72,7 +78,7 @@ local function MoveTo(hrp, pos, height)
     )
 end
 
--- ===== SCAN GREEN =====
+-- ===== SCAN GREEN (COLOR ONLY) =====
 local function ScanGreen(hrp)
     if os.clock() - scanTick < SCAN_INTERVAL then return end
     scanTick = os.clock()
@@ -100,7 +106,24 @@ local function ScanGreen(hrp)
     end
 end
 
--- ===== MAIN MOVE LOOP =====
+-- ===== SCAN DESTROY (FLAG ONLY) =====
+local function ScanDestroyFlag()
+    destroyActive = false
+    for _,v in ipairs(Workspace:GetDescendants()) do
+        if v:IsA("BillboardGui") then
+            for _,ui in ipairs(v:GetDescendants()) do
+                if ui:IsA("TextLabel") and ui.Text then
+                    if ui.Text:lower():find("destroy") then
+                        destroyActive = true
+                        return
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- ===== MAIN LOOP =====
 RunService.Heartbeat:Connect(function()
     if not getgenv().AutoDungeon then
         State = "OFF"
@@ -111,25 +134,25 @@ RunService.Heartbeat:Connect(function()
     local hrp, hum = getHRPandHum()
     if not hrp or not hum then return end
 
+    -- DIE
     if hum.Health <= 0 then
         State = "RETURN_GREEN"
+        StatusLabel:SetText("STATE: RETURN_GREEN")
         return
     end
 
+    -- TELEPORT
     if lastHRPPos and (hrp.Position - lastHRPPos).Magnitude > TELEPORT_DISTANCE then
         State = "SEARCH"
     end
     lastHRPPos = hrp.Position
 
-    if State == "RETURN_GREEN" and lastGreenPos then
-        StatusLabel:SetText("STATE: RETURN_GREEN")
-        MoveTo(hrp, lastGreenPos, HEIGHT_GREEN)
-        return
-    end
-
+    -- SCANS
     ScanGreen(hrp)
+    ScanDestroyFlag()
+
     if State == "GREEN" and lastGreenPos then
-        StatusLabel:SetText("STATE: GREEN")
+        StatusLabel:SetText(destroyActive and "STATE: GREEN (DESTROY PHASE)" or "STATE: GREEN")
         MoveTo(hrp, lastGreenPos, HEIGHT_GREEN)
         return
     end
@@ -138,9 +161,9 @@ RunService.Heartbeat:Connect(function()
     MoveTo(hrp, hrp.Position, HEIGHT_NORMAL)
 end)
 
--- =================================================================
--- ====================== FAST ATTACK (FIXED) ======================
--- =================================================================
+-- =========================================================
+-- ================= FAST ATTACK (FIXED) ===================
+-- =========================================================
 
 local remote, idremote
 for _, v in next, ({
@@ -163,7 +186,7 @@ for _, v in next, ({
 end
 
 task.spawn(function()
-    while task.wait(0.05) do -- ✅ FIX: an toàn, vẫn rất nhanh
+    while task.wait(0.05) do
         if not getgenv().FastAttack then continue end
 
         local char = LP.Character
