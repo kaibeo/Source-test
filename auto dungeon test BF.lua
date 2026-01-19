@@ -1,26 +1,33 @@
--- ===== WINDUI AUTO DUNGEON + FAST ATTACK (SEPARATE) =====
+-- ===== AUTO DUNGEON + FAST ATTACK | WINDUI (FIXED & WORKING) =====
 
--- LOAD WINDUI
+-- LOAD WINDUI (ĐÚNG FILE)
 local WindUI = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/Footagesus/WindUI/refs/heads/main/main_example.lua"
+    "https://raw.githubusercontent.com/Footagesus/WindUI/main/main.lua"
 ))()
 
+-- CREATE WINDOW
 local Window = WindUI:CreateWindow({
     Title = "Auto Dungeon",
+    Icon = "home",
     Author = "Auto Script",
-    Folder = "AutoDungeon",
-    Size = UDim2.fromOffset(460, 360)
 })
 
-local MainTab = Window:CreateTab("Main", "home")
-local StatusTab = Window:CreateTab("Status", "info")
+local MainTab = Window:Tab({
+    Name = "Main",
+    Icon = "home"
+})
+
+local StatusTab = Window:Tab({
+    Name = "Status",
+    Icon = "info"
+})
 
 -- ===== GLOBAL SWITCH =====
 getgenv().AutoDungeon = false
 getgenv().FastAttack = false
 
--- ===== UI TOGGLES =====
-MainTab:CreateToggle({
+-- ===== UI =====
+MainTab:Toggle({
     Name = "AUTO DUNGEON",
     Default = false,
     Callback = function(v)
@@ -28,7 +35,7 @@ MainTab:CreateToggle({
     end
 })
 
-MainTab:CreateToggle({
+MainTab:Toggle({
     Name = "FAST ATTACK",
     Default = false,
     Callback = function(v)
@@ -36,7 +43,9 @@ MainTab:CreateToggle({
     end
 })
 
-local StatusLabel = StatusTab:CreateLabel("STATE: IDLE")
+local StatusLabel = StatusTab:Label({
+    Text = "STATE: IDLE"
+})
 
 -- ===== SERVICES =====
 local Players = game:GetService("Players")
@@ -44,7 +53,10 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local LP = Players.LocalPlayer
 
--- ===== CONFIG (AUTO DUNGEON) =====
+-- =====================================================
+-- =============== AUTO DUNGEON LOGIC ==================
+-- =====================================================
+
 local HEIGHT_NORMAL = 20
 local HEIGHT_GREEN  = 10
 local MOVE_SPEED = 0.6
@@ -52,14 +64,11 @@ local GREEN_HALF_RANGE = 500
 local TELEPORT_DISTANCE = 180
 local SCAN_INTERVAL = 0.15
 
--- ===== AUTO DUNGEON STATE =====
 local DungeonState = "IDLE"
 local lastGreenPos = nil
 local lastHRPPos = nil
 local scanTick = 0
-local destroyActive = false
 
--- ===== SAFE GET =====
 local function getHRPandHum()
     local char = LP.Character
     if not char then return end
@@ -70,7 +79,6 @@ local function getHRPandHum()
     end
 end
 
--- ===== MOVE (AUTO DUNGEON) =====
 local function MoveTo(hrp, pos, height)
     hrp.AssemblyLinearVelocity = Vector3.zero
     hrp.AssemblyAngularVelocity = Vector3.zero
@@ -83,7 +91,6 @@ local function MoveTo(hrp, pos, height)
     )
 end
 
--- ===== SCAN GREEN =====
 local function ScanGreen(hrp)
     if os.clock() - scanTick < SCAN_INTERVAL then return end
     scanTick = os.clock()
@@ -111,57 +118,42 @@ local function ScanGreen(hrp)
     end
 end
 
--- ===== SCAN DESTROY (FLAG ONLY) =====
-local function ScanDestroyFlag()
-    destroyActive = false
-    for _,v in ipairs(Workspace:GetDescendants()) do
-        if v:IsA("BillboardGui") then
-            for _,ui in ipairs(v:GetDescendants()) do
-                if ui:IsA("TextLabel") and ui.Text and ui.Text:lower():find("destroy") then
-                    destroyActive = true
-                    return
-                end
-            end
-        end
-    end
-end
-
--- ===== AUTO DUNGEON LOOP =====
 RunService.Heartbeat:Connect(function()
     local hrp, hum = getHRPandHum()
     if not hrp or not hum then return end
 
-    if getgenv().AutoDungeon then
-        -- DIE
-        if hum.Health <= 0 then
-            DungeonState = "RETURN_GREEN"
-            StatusLabel:SetText("STATE: RETURN_GREEN")
-            return
-        end
-
-        -- TELEPORT
-        if lastHRPPos and (hrp.Position - lastHRPPos).Magnitude > TELEPORT_DISTANCE then
-            DungeonState = "SEARCH"
-        end
-        lastHRPPos = hrp.Position
-
-        ScanGreen(hrp)
-        ScanDestroyFlag()
-
-        if DungeonState == "GREEN" and lastGreenPos then
-            StatusLabel:SetText(destroyActive and "STATE: GREEN (DESTROY PHASE)" or "STATE: GREEN")
-            MoveTo(hrp, lastGreenPos, HEIGHT_GREEN)
-            return
-        end
-
-        StatusLabel:SetText("STATE: HOVER")
-        MoveTo(hrp, hrp.Position, HEIGHT_NORMAL)
+    if not getgenv().AutoDungeon then
+        DungeonState = "IDLE"
+        StatusLabel:SetText("STATE: IDLE")
+        return
     end
+
+    if hum.Health <= 0 then
+        DungeonState = "RETURN_GREEN"
+        StatusLabel:SetText("STATE: RETURN_GREEN")
+        return
+    end
+
+    if lastHRPPos and (hrp.Position - lastHRPPos).Magnitude > TELEPORT_DISTANCE then
+        DungeonState = "SEARCH"
+    end
+    lastHRPPos = hrp.Position
+
+    ScanGreen(hrp)
+
+    if DungeonState == "GREEN" and lastGreenPos then
+        StatusLabel:SetText("STATE: GREEN")
+        MoveTo(hrp, lastGreenPos, HEIGHT_GREEN)
+        return
+    end
+
+    StatusLabel:SetText("STATE: HOVER")
+    MoveTo(hrp, hrp.Position, HEIGHT_NORMAL)
 end)
 
--- ===================================================
--- ================= FAST ATTACK =====================
--- ===================================================
+-- =====================================================
+-- ================= FAST ATTACK =======================
+-- =====================================================
 
 local remote, idremote
 for _, v in next, ({
