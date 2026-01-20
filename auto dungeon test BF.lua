@@ -56,7 +56,7 @@ end)
 
 S.CreateToggle({
     Title="Auto Start Dungeon",
-    Desc="Auto start after TP",
+    Desc="Auto select mode & start",
     Default=false
 },function(v)
     getgenv().AutoStartDungeon = v
@@ -75,7 +75,7 @@ end)
 
 S.CreateDropdown({
     Title="Weapon Type",
-    Desc="Select weapon",
+    Desc="Auto equip & keep weapon",
     List={"Melee","Sword","Fruit"},
     Default="Melee",
     Search=false,
@@ -95,18 +95,24 @@ S2.CreateToggle({
     getgenv().FastAttack = v
 end)
 
----------------- CORE VARIABLES ----------------
+---------------- CORE VAR ----------------
 local ZeroTarget = nil
 local ZeroTween  = nil
 local LastGreen  = nil
-local HEIGHT_FARM = 20
+
+local HEIGHT_FARM  = 20
 local HEIGHT_GREEN = 10
 local SPEED = 0.6
 
----------------- HELPER ----------------
+---------------- HELPERS ----------------
 local function getHRP()
     local c = LP.Character
     return c and c:FindFirstChild("HumanoidRootPart")
+end
+
+local function getHum()
+    local c = LP.Character
+    return c and c:FindFirstChildOfClass("Humanoid")
 end
 
 local function PressE()
@@ -115,45 +121,124 @@ local function PressE()
     VirtualInputManager:SendKeyEvent(false,Enum.KeyCode.E,false,game)
 end
 
----------------- FIND 0/4 ----------------
-local function FindZero()
-    local t={}
-    for _,v in ipairs(workspace:GetDescendants()) do
-        if v:IsA("BillboardGui") then
-            local lb=v:FindFirstChildWhichIsA("TextLabel")
-            if lb and lb.Text=="0/4" and v.Adornee then
-                table.insert(t,v.Adornee)
+---------------- AUTO EQUIP (FORCE) ----------------
+local function ForceEquipWeapon()
+    local char = LP.Character
+    local hum = getHum()
+    local backpack = LP:FindFirstChild("Backpack")
+    if not char or not hum or not backpack then return end
+
+    local want = getgenv().WeaponType
+    local current = char:FindFirstChildOfClass("Tool")
+
+    if current then
+        local curType = current:GetAttribute("WeaponType")
+        if want == "Fruit" and not curType then return end
+        if curType == want then return end
+    end
+
+    for _,tool in ipairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            local tType = tool:GetAttribute("WeaponType")
+
+            if tType and tType == want then
+                hum:EquipTool(tool)
+                return
+            end
+
+            if want == "Fruit" and not tType then
+                hum:EquipTool(tool)
+                return
             end
         end
     end
-    if #t>0 then
-        return t[math.random(#t)]
+end
+
+---------------- FIND 0/4 ----------------
+local function FindZero()
+    local list = {}
+    for _,v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("BillboardGui") then
+            local lb = v:FindFirstChildWhichIsA("TextLabel")
+            if lb and lb.Text=="0/4" and v.Adornee then
+                table.insert(list,v.Adornee)
+            end
+        end
+    end
+    if #list > 0 then
+        return list[math.random(#list)]
     end
 end
+
+---------------- AUTO CLICK MODE ----------------
+local function AutoSelectDungeonMode()
+    local gui = LP.PlayerGui:FindFirstChild("DungeonSettings", true)
+    if not gui or not gui.Enabled then return end
+
+    for _,btn in ipairs(gui:GetDescendants()) do
+        if btn:IsA("TextButton") then
+            local t = btn.Text:lower()
+            if getgenv().DungeonMode=="Normal" and t:find("normal") then
+                firesignal(btn.MouseButton1Click)
+            elseif getgenv().DungeonMode=="Hard" and t:find("hard") then
+                firesignal(btn.MouseButton1Click)
+            elseif getgenv().DungeonMode=="Challenge" and t:find("challenge") then
+                firesignal(btn.MouseButton1Click)
+            end
+        end
+    end
+end
+
+local function AutoClickStartDungeon()
+    local gui = LP.PlayerGui:FindFirstChild("DungeonSettings", true)
+    if not gui or not gui.Enabled then return end
+
+    for _,btn in ipairs(gui:GetDescendants()) do
+        if btn:IsA("TextButton") and btn.Text:lower():find("start") then
+            firesignal(btn.MouseButton1Click)
+            return
+        end
+    end
+end
+
+task.spawn(function()
+    while task.wait(0.4) do
+        if getgenv().AutoStartDungeon then
+            AutoSelectDungeonMode()
+            task.wait(0.2)
+            AutoClickStartDungeon()
+        end
+    end
+end)
 
 ---------------- MAIN LOOP ----------------
 RunService.Heartbeat:Connect(function()
     local hrp = getHRP()
     if not hrp then return end
 
+    -- FORCE EQUIP
+    if getgenv().AutoDungeon or getgenv().AutoStartDungeon then
+        ForceEquipWeapon()
+    end
+
     -- 🔵 TP 0/4 (HIGHEST PRIORITY)
     if getgenv().AutoTPZero then
         if not ZeroTarget then
             ZeroTarget = FindZero()
             if ZeroTarget then
-                local d=(hrp.Position-ZeroTarget.Position).Magnitude
+                local d = (hrp.Position-ZeroTarget.Position).Magnitude
                 ZeroTween = TweenService:Create(
                     hrp,
                     TweenInfo.new(d/250,Enum.EasingStyle.Linear),
-                    {CFrame=ZeroTarget.CFrame+Vector3.new(0,5,0)}
+                    {CFrame = ZeroTarget.CFrame + Vector3.new(0,5,0)}
                 )
                 ZeroTween:Play()
             end
         else
-            if (hrp.Position-ZeroTarget.Position).Magnitude<7 then
+            if (hrp.Position-ZeroTarget.Position).Magnitude < 7 then
                 PressE()
-                getgenv().AutoTPZero=false
-                ZeroTarget=nil
+                getgenv().AutoTPZero = false
+                ZeroTarget = nil
             end
         end
         return
@@ -180,7 +265,11 @@ RunService.Heartbeat:Connect(function()
     if LastGreen then
         hrp.CFrame = CFrame.new(
             hrp.Position:Lerp(
-                Vector3.new(LastGreen.X,LastGreen.Y+HEIGHT_GREEN,LastGreen.Z),
+                Vector3.new(
+                    LastGreen.X,
+                    LastGreen.Y+HEIGHT_GREEN,
+                    LastGreen.Z
+                ),
                 SPEED
             )
         )
@@ -210,16 +299,14 @@ task.spawn(function()
         local root=char and char:FindFirstChild("HumanoidRootPart")
         if not root then continue end
         local parts={}
-        for _,x in ipairs({workspace.Enemies}) do
-            for _,v in ipairs(x:GetChildren()) do
-                local hrp=v:FindFirstChild("HumanoidRootPart")
-                local hum=v:FindFirstChild("Humanoid")
-                if hrp and hum and hum.Health>0 and
-                (hrp.Position-root.Position).Magnitude<=120 then
-                    for _,bp in ipairs(v:GetChildren()) do
-                        if bp:IsA("BasePart") then
-                            table.insert(parts,{v,bp})
-                        end
+        for _,v in ipairs((workspace:FindFirstChild("Enemies") or {}):GetChildren()) do
+            local hrp=v:FindFirstChild("HumanoidRootPart")
+            local hum=v:FindFirstChild("Humanoid")
+            if hrp and hum and hum.Health>0 and
+            (hrp.Position-root.Position).Magnitude<=120 then
+                for _,bp in ipairs(v:GetChildren()) do
+                    if bp:IsA("BasePart") then
+                        table.insert(parts,{v,bp})
                     end
                 end
             end
