@@ -1,238 +1,158 @@
 --==================================================
--- ZMATRIX | AUTO DUNGEON FULL FINAL (WORKING)
--- UI: Banana UI
--- PC + Mobile | Delta X OK
+-- AUTO DUNGEON FULL FINAL (NO MISSING FEATURES)
+-- Destroy Priority | Green Auto | Die Return | Shadow Skip
+-- Fast Attack: KEEP USER VERSION
+-- PC + Mobile | Delta OK
 --==================================================
-
----------------- UI ----------------
-local Library = loadstring(game:HttpGet(
-"https://raw.githubusercontent.com/kaibeo/Updatetest/refs/heads/main/UiBanana%20G%E1%BB%91c.lua"
-))()
-
-local Main = Library.CreateMain({ Desc = "" })
-
-local DungeonPage = Main.CreatePage({
-    Page_Name = "Dungeon",
-    Page_Title = "Dungeon"
-})
-
-local SettingPage = Main.CreatePage({
-    Page_Name = "Settings",
-    Page_Title = "Settings"
-})
-
----------------- GLOBAL FLAGS ----------------
-getgenv().AutoDungeon      = false
-getgenv().AutoTPZero       = false
-getgenv().AutoStartDungeon = false
-getgenv().FastAttack       = false
-getgenv().DungeonMode      = "Normal"
-getgenv().WeaponType       = "Melee"
-getgenv().IsFarmingEnemy   = false
 
 ---------------- SERVICES ----------------
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local VirtualInputManager = game:GetService("VirtualInputManager")
+local Workspace = game:GetService("Workspace")
+
 local LP = Players.LocalPlayer
 
----------------- UI : DUNGEON ----------------
-local S = DungeonPage.CreateSection("Dungeon Control")
+---------------- CONFIG ----------------
+local HEIGHT_FARM   = 20   -- farm / destroy
+local HEIGHT_GREEN  = 7    -- green / return
+local MOVE_SPEED    = 0.6
+local TELEPORT_DIST = 180
 
-S.CreateToggle({
-    Title="Auto Dungeon",
-    Desc="Farm enemy + Destroy + Green",
-    Default=false
-},function(v)
-    getgenv().AutoDungeon = v
-end)
+---------------- STATE ----------------
+local LastGreenPos = nil
+local LastHRPPos = nil
+local ReturnAfterDie = false
 
-S.CreateButton({
-    Title="Auto TP 0/4"
-},function()
-    getgenv().AutoTPZero = true
-end)
+local IgnoredEnemies = {}
+local DamageCheck = {}
 
-S.CreateToggle({
-    Title="Auto Start Dungeon",
-    Desc="Auto select mode & start",
-    Default=false
-},function(v)
-    getgenv().AutoStartDungeon = v
-end)
-
-S.CreateDropdown({
-    Title="Dungeon Mode",
-    Desc="Select mode",
-    List={"Normal","Hard","Challenge"},
-    Default="Normal",
-    Search=false,
-    Selected=false
-},function(v)
-    getgenv().DungeonMode = v
-end)
-
-S.CreateDropdown({
-    Title="Weapon Type",
-    Desc="Auto equip & keep",
-    List={"Melee","Sword","Fruit"},
-    Default="Melee",
-    Search=false,
-    Selected=false
-},function(v)
-    getgenv().WeaponType = v
-end)
-
----------------- UI : SETTINGS ----------------
-local S2 = SettingPage.CreateSection("Combat")
-
-S2.CreateToggle({
-    Title="Fast Attack",
-    Desc="Fast attack dungeon",
-    Default=false
-},function(v)
-    getgenv().FastAttack = v
-end)
-
----------------- CORE VAR ----------------
-local ZeroTarget = nil
-local ZeroTween  = nil
-local LastGreen  = nil
-
-local HEIGHT_FARM  = 20
-local HEIGHT_GREEN = 10
-local SPEED = 0.55
-
----------------- HELPERS ----------------
-local function getHRP()
+---------------- SAFE GET ----------------
+local function getHRPandHum()
     local c = LP.Character
-    return c and c:FindFirstChild("HumanoidRootPart")
-end
-
-local function getHum()
-    local c = LP.Character
-    return c and c:FindFirstChildOfClass("Humanoid")
-end
-
-local function PressE()
-    VirtualInputManager:SendKeyEvent(true,Enum.KeyCode.E,false,game)
-    task.wait(0.05)
-    VirtualInputManager:SendKeyEvent(false,Enum.KeyCode.E,false,game)
-end
-
----------------- FORCE EQUIP WEAPON ----------------
-local function ForceEquipWeapon()
-    local char = LP.Character
-    local hum = getHum()
-    local backpack = LP:FindFirstChild("Backpack")
-    if not char or not hum or not backpack then return end
-
-    local want = getgenv().WeaponType
-    local current = char:FindFirstChildOfClass("Tool")
-
-    if current then
-        local curType = current:GetAttribute("WeaponType")
-        if want == "Fruit" and not curType then return end
-        if curType == want then return end
-    end
-
-    for _,tool in ipairs(backpack:GetChildren()) do
-        if tool:IsA("Tool") then
-            local tType = tool:GetAttribute("WeaponType")
-            if tType and tType == want then
-                hum:EquipTool(tool)
-                return
-            end
-            if want == "Fruit" and not tType then
-                hum:EquipTool(tool)
-                return
-            end
-        end
+    if not c then return end
+    local hrp = c:FindFirstChild("HumanoidRootPart")
+    local hum = c:FindFirstChildOfClass("Humanoid")
+    if hrp and hum then
+        return hrp, hum
     end
 end
 
----------------- FIND 0/4 ----------------
-local function FindZero()
-    local list = {}
-    for _,v in ipairs(workspace:GetDescendants()) do
+---------------- LOCK Y ----------------
+local function LockY(hrp)
+    local bp = hrp:FindFirstChild("LOCK_Y")
+    if not bp then
+        bp = Instance.new("BodyPosition")
+        bp.Name = "LOCK_Y"
+        bp.MaxForce = Vector3.new(0, math.huge, 0)
+        bp.P = 60000
+        bp.D = 1500
+        bp.Parent = hrp
+    end
+    bp.Position = Vector3.new(0, hrp.Position.Y, 0)
+end
+
+---------------- MOVE ----------------
+local function MoveTo(hrp, pos, height)
+    hrp.AssemblyLinearVelocity = Vector3.zero
+    hrp.AssemblyAngularVelocity = Vector3.zero
+    hrp.CFrame = hrp.CFrame:Lerp(
+        CFrame.new(pos.X, pos.Y + height, pos.Z),
+        MOVE_SPEED
+    )
+end
+
+---------------- FIND DESTROY ----------------
+local function FindNearestDestroy()
+    local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil end
+
+    local nearest, dist = nil, math.huge
+    for _,v in ipairs(Workspace:GetDescendants()) do
         if v:IsA("BillboardGui") then
-            local lb = v:FindFirstChildWhichIsA("TextLabel")
-            if lb and lb.Text=="0/4" and v.Adornee then
-                table.insert(list,v.Adornee)
+            for _,t in ipairs(v:GetDescendants()) do
+                if t:IsA("TextLabel") and t.Text and t.Text:lower():find("destroy") then
+                    local part = v.Adornee or v.Parent
+                    if part and part:IsA("BasePart") then
+                        local d = (part.Position - hrp.Position).Magnitude
+                        if d < dist then
+                            dist = d
+                            nearest = part
+                        end
+                    end
+                end
             end
         end
     end
-    if #list > 0 then
-        return list[math.random(#list)]
-    end
+    return nearest
 end
 
----------------- AUTO CLICK MODE / START ----------------
-local function AutoSelectDungeonMode()
-    local gui = LP.PlayerGui:FindFirstChild("DungeonSettings", true)
-    if not gui or not gui.Enabled then return end
-
-    for _,btn in ipairs(gui:GetDescendants()) do
-        if btn:IsA("TextButton") then
-            local t = btn.Text:lower()
-            if getgenv().DungeonMode=="Normal" and t:find("normal") then
-                firesignal(btn.MouseButton1Click)
-            elseif getgenv().DungeonMode=="Hard" and t:find("hard") then
-                firesignal(btn.MouseButton1Click)
-            elseif getgenv().DungeonMode=="Challenge" and t:find("challenge") then
-                firesignal(btn.MouseButton1Click)
+---------------- SCAN GREEN (COLOR ONLY) ----------------
+local function ScanGreen()
+    for _,v in ipairs(Workspace:GetDescendants()) do
+        if v:IsA("BillboardGui") then
+            for _,t in ipairs(v:GetDescendants()) do
+                if t:IsA("TextLabel") then
+                    local c = t.TextColor3
+                    if c.G > c.R and c.G > c.B then
+                        local part = v.Adornee or v.Parent
+                        if part and part:IsA("BasePart") then
+                            LastGreenPos = part.Position
+                        end
+                    end
+                end
             end
         end
     end
 end
 
-local function AutoClickStartDungeon()
-    local gui = LP.PlayerGui:FindFirstChild("DungeonSettings", true)
-    if not gui or not gui.Enabled then return end
+---------------- BUG ENEMY CHECK ----------------
+local function IsBugEnemy(model)
+    if IgnoredEnemies[model] then return true end
+    local hum = model:FindFirstChildOfClass("Humanoid")
+    if not hum then return true end
 
-    for _,btn in ipairs(gui:GetDescendants()) do
-        if btn:IsA("TextButton") and btn.Text:lower():find("start") then
-            firesignal(btn.MouseButton1Click)
-            return
+    local now = os.clock()
+    local data = DamageCheck[model]
+    if not data then
+        DamageCheck[model] = {hp = hum.Health, tick = now}
+        return false
+    end
+
+    if now - data.tick >= 1.5 then
+        if hum.Health >= data.hp - 1 then
+            IgnoredEnemies[model] = true
+            DamageCheck[model] = nil
+            return true
+        else
+            data.hp = hum.Health
+            data.tick = now
         end
     end
+    return false
 end
 
-task.spawn(function()
-    while task.wait(0.4) do
-        if getgenv().AutoStartDungeon then
-            AutoSelectDungeonMode()
-            task.wait(0.2)
-            AutoClickStartDungeon()
-        end
-    end
-end)
-
----------------- FIND DESTROY / ENEMY ----------------
-local function FindDestroy()
-    local e = workspace:FindFirstChild("Enemies")
-    if not e then return end
-    for _,v in ipairs(e:GetChildren()) do
-        if v.Name:lower():find("destroy") then
-            local h=v:FindFirstChild("Humanoid")
-            local r=v:FindFirstChild("HumanoidRootPart")
-            if h and r and h.Health>0 then return r end
-        end
-    end
-end
-
+---------------- FIND ENEMY ----------------
 local function FindNearestEnemy(hrp)
-    local e = workspace:FindFirstChild("Enemies")
-    if not e then return end
-    local best,dist=nil,math.huge
-    for _,v in ipairs(e:GetChildren()) do
-        local h=v:FindFirstChild("Humanoid")
-        local r=v:FindFirstChild("HumanoidRootPart")
-        if h and r and h.Health>0 then
-            local d=(r.Position-hrp.Position).Magnitude
-            if d<dist then dist,best=d,r end
+    local enemies = Workspace:FindFirstChild("Enemies")
+    if not enemies then return nil end
+
+    local best, dist = nil, math.huge
+    for _,v in ipairs(enemies:GetChildren()) do
+        local hum = v:FindFirstChildOfClass("Humanoid")
+        local r = v:FindFirstChild("HumanoidRootPart")
+        if hum and r and hum.Health > 0 then
+            if v.Name:lower():find("shadow") then
+                IgnoredEnemies[v] = true
+                continue
+            end
+            if IsBugEnemy(v) then
+                continue
+            end
+            local d = (r.Position - hrp.Position).Magnitude
+            if d < dist then
+                dist = d
+                best = r
+            end
         end
     end
     return best
@@ -240,149 +160,49 @@ end
 
 ---------------- MAIN LOOP ----------------
 RunService.Heartbeat:Connect(function()
-    local hrp = getHRP()
-    if not hrp then return end
+    local hrp, hum = getHRPandHum()
+    if not hrp or not hum then return end
 
-    -- giữ vũ khí đúng loại
-    if getgenv().AutoDungeon or getgenv().AutoStartDungeon then
-        ForceEquipWeapon()
+    LockY(hrp)
+
+    -- DIE
+    if hum.Health <= 0 then
+        if LastGreenPos then ReturnAfterDie = true end
+        return
     end
 
-    -- 🔵 TP 0/4 (ƯU TIÊN CAO NHẤT)
-    if getgenv().AutoTPZero then
-        if not ZeroTarget then
-            ZeroTarget = FindZero()
-            if ZeroTarget then
-                local d=(hrp.Position-ZeroTarget.Position).Magnitude
-                ZeroTween = TweenService:Create(
-                    hrp,
-                    TweenInfo.new(d/250,Enum.EasingStyle.Linear),
-                    {CFrame=ZeroTarget.CFrame+Vector3.new(0,5,0)}
-                )
-                ZeroTween:Play()
-            end
-        else
-            if (hrp.Position-ZeroTarget.Position).Magnitude < 7 then
-                PressE()
-                getgenv().AutoTPZero = false
-                ZeroTarget = nil
-            end
+    -- TELEPORT MAP
+    if LastHRPPos and (hrp.Position - LastHRPPos).Magnitude > TELEPORT_DIST then
+        ReturnAfterDie = false
+    end
+    LastHRPPos = hrp.Position
+
+    -- RETURN AFTER DIE
+    if ReturnAfterDie and LastGreenPos then
+        MoveTo(hrp, LastGreenPos, HEIGHT_GREEN)
+        if (hrp.Position - LastGreenPos).Magnitude < 10 then
+            ReturnAfterDie = false
         end
         return
     end
 
-    if not getgenv().AutoDungeon then return end
-
-    -- 🔴 DESTROY
-    local destroy = FindDestroy()
+    -- DESTROY PRIORITY
+    local destroy = FindNearestDestroy()
     if destroy then
-        getgenv().IsFarmingEnemy = true
-        hrp.CFrame = hrp.CFrame:Lerp(
-            CFrame.new(
-                destroy.Position.X,
-                destroy.Position.Y+HEIGHT_FARM,
-                destroy.Position.Z
-            ),
-            SPEED
-        )
+        MoveTo(hrp, destroy.Position, HEIGHT_FARM)
         return
     end
 
-    -- 🔴 FARM ENEMY
+    -- FARM ENEMY
     local enemy = FindNearestEnemy(hrp)
     if enemy then
-        getgenv().IsFarmingEnemy = true
-        hrp.CFrame = hrp.CFrame:Lerp(
-            CFrame.new(
-                enemy.Position.X,
-                enemy.Position.Y+HEIGHT_FARM,
-                enemy.Position.Z
-            ),
-            SPEED
-        )
+        MoveTo(hrp, enemy.Position, HEIGHT_FARM)
         return
     end
 
-    -- 🟢 CLEAR → GREEN
-    getgenv().IsFarmingEnemy = false
-    for _,v in ipairs(workspace:GetDescendants()) do
-        if v:IsA("BillboardGui") then
-            for _,t in ipairs(v:GetDescendants()) do
-                if t:IsA("TextLabel") then
-                    local c=t.TextColor3
-                    if c.G>c.R and c.G>c.B then
-                        if v.Adornee then
-                            LastGreen=v.Adornee.Position
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-    if LastGreen then
-        hrp.CFrame = hrp.CFrame:Lerp(
-            CFrame.new(
-                LastGreen.X,
-                LastGreen.Y+HEIGHT_GREEN,
-                LastGreen.Z
-            ),
-            SPEED
-        )
-    end
-end)
-
----------------- FAST ATTACK (USER VERSION) ----------------
-local remote,idremote
-for _,v in next,({
-    ReplicatedStorage.Util,
-    ReplicatedStorage.Common,
-    ReplicatedStorage.Remotes,
-    ReplicatedStorage.Assets,
-    ReplicatedStorage.FX
-}) do
-    for _,n in next,v:GetChildren() do
-        if n:IsA("RemoteEvent") and n:GetAttribute("Id") then
-            remote,idremote=n,n:GetAttribute("Id")
-        end
-    end
-end
-
-task.spawn(function()
-    while task.wait(0.0005) do
-        if not getgenv().FastAttack or not getgenv().IsFarmingEnemy then continue end
-        local char=LP.Character
-        local root=char and char:FindFirstChild("HumanoidRootPart")
-        if not root then continue end
-        local parts={}
-        for _,v in ipairs((workspace:FindFirstChild("Enemies") or {}):GetChildren()) do
-            local hrp=v:FindFirstChild("HumanoidRootPart")
-            local hum=v:FindFirstChild("Humanoid")
-            if hrp and hum and hum.Health>0 and
-            (hrp.Position-root.Position).Magnitude<=120 then
-                for _,bp in ipairs(v:GetChildren()) do
-                    if bp:IsA("BasePart") then
-                        table.insert(parts,{v,bp})
-                    end
-                end
-            end
-        end
-        local tool=char:FindFirstChildOfClass("Tool")
-        if #parts>0 and tool then
-            pcall(function()
-                require(ReplicatedStorage.Modules.Net):RemoteEvent("RegisterHit",true)
-                ReplicatedStorage.Modules.Net["RE/RegisterAttack"]:FireServer()
-                local head=parts[1][1]:FindFirstChild("Head")
-                if not head then return end
-                ReplicatedStorage.Modules.Net["RE/RegisterHit"]:FireServer(
-                    head,parts,{},tostring(LP.UserId)
-                )
-                cloneref(remote):FireServer(
-                    "RE/RegisterHit",
-                    idremote,
-                    head,parts
-                )
-            end)
-        end
+    -- GO GREEN
+    ScanGreen()
+    if LastGreenPos then
+        MoveTo(hrp, LastGreenPos, HEIGHT_GREEN)
     end
 end)
