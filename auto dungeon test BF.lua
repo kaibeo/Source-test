@@ -1,5 +1,5 @@
 --==================================================
--- ZMATRIX | AUTO DUNGEON FULL FINAL (STABLE)
+-- ZMATRIX | AUTO DUNGEON FULL FINAL (WORKING)
 -- UI: Banana UI
 -- PC + Mobile | Delta X OK
 --==================================================
@@ -28,6 +28,7 @@ getgenv().AutoStartDungeon = false
 getgenv().FastAttack       = false
 getgenv().DungeonMode      = "Normal"
 getgenv().WeaponType       = "Melee"
+getgenv().IsFarmingEnemy   = false
 
 ---------------- SERVICES ----------------
 local Players = game:GetService("Players")
@@ -41,8 +42,8 @@ local LP = Players.LocalPlayer
 local S = DungeonPage.CreateSection("Dungeon Control")
 
 S.CreateToggle({
-    Title="Auto Dungeon (Full)",
-    Desc="Farm + Destroy + Green",
+    Title="Auto Dungeon",
+    Desc="Farm enemy + Destroy + Green",
     Default=false
 },function(v)
     getgenv().AutoDungeon = v
@@ -75,7 +76,7 @@ end)
 
 S.CreateDropdown({
     Title="Weapon Type",
-    Desc="Auto equip & keep weapon",
+    Desc="Auto equip & keep",
     List={"Melee","Sword","Fruit"},
     Default="Melee",
     Search=false,
@@ -102,7 +103,7 @@ local LastGreen  = nil
 
 local HEIGHT_FARM  = 20
 local HEIGHT_GREEN = 10
-local SPEED = 0.6
+local SPEED = 0.55
 
 ---------------- HELPERS ----------------
 local function getHRP()
@@ -121,7 +122,7 @@ local function PressE()
     VirtualInputManager:SendKeyEvent(false,Enum.KeyCode.E,false,game)
 end
 
----------------- AUTO EQUIP (FORCE) ----------------
+---------------- FORCE EQUIP WEAPON ----------------
 local function ForceEquipWeapon()
     local char = LP.Character
     local hum = getHum()
@@ -140,12 +141,10 @@ local function ForceEquipWeapon()
     for _,tool in ipairs(backpack:GetChildren()) do
         if tool:IsA("Tool") then
             local tType = tool:GetAttribute("WeaponType")
-
             if tType and tType == want then
                 hum:EquipTool(tool)
                 return
             end
-
             if want == "Fruit" and not tType then
                 hum:EquipTool(tool)
                 return
@@ -170,7 +169,7 @@ local function FindZero()
     end
 end
 
----------------- AUTO CLICK MODE ----------------
+---------------- AUTO CLICK MODE / START ----------------
 local function AutoSelectDungeonMode()
     local gui = LP.PlayerGui:FindFirstChild("DungeonSettings", true)
     if not gui or not gui.Enabled then return end
@@ -211,26 +210,54 @@ task.spawn(function()
     end
 end)
 
+---------------- FIND DESTROY / ENEMY ----------------
+local function FindDestroy()
+    local e = workspace:FindFirstChild("Enemies")
+    if not e then return end
+    for _,v in ipairs(e:GetChildren()) do
+        if v.Name:lower():find("destroy") then
+            local h=v:FindFirstChild("Humanoid")
+            local r=v:FindFirstChild("HumanoidRootPart")
+            if h and r and h.Health>0 then return r end
+        end
+    end
+end
+
+local function FindNearestEnemy(hrp)
+    local e = workspace:FindFirstChild("Enemies")
+    if not e then return end
+    local best,dist=nil,math.huge
+    for _,v in ipairs(e:GetChildren()) do
+        local h=v:FindFirstChild("Humanoid")
+        local r=v:FindFirstChild("HumanoidRootPart")
+        if h and r and h.Health>0 then
+            local d=(r.Position-hrp.Position).Magnitude
+            if d<dist then dist,best=d,r end
+        end
+    end
+    return best
+end
+
 ---------------- MAIN LOOP ----------------
 RunService.Heartbeat:Connect(function()
     local hrp = getHRP()
     if not hrp then return end
 
-    -- FORCE EQUIP
+    -- giữ vũ khí đúng loại
     if getgenv().AutoDungeon or getgenv().AutoStartDungeon then
         ForceEquipWeapon()
     end
 
-    -- 🔵 TP 0/4 (HIGHEST PRIORITY)
+    -- 🔵 TP 0/4 (ƯU TIÊN CAO NHẤT)
     if getgenv().AutoTPZero then
         if not ZeroTarget then
             ZeroTarget = FindZero()
             if ZeroTarget then
-                local d = (hrp.Position-ZeroTarget.Position).Magnitude
+                local d=(hrp.Position-ZeroTarget.Position).Magnitude
                 ZeroTween = TweenService:Create(
                     hrp,
                     TweenInfo.new(d/250,Enum.EasingStyle.Linear),
-                    {CFrame = ZeroTarget.CFrame + Vector3.new(0,5,0)}
+                    {CFrame=ZeroTarget.CFrame+Vector3.new(0,5,0)}
                 )
                 ZeroTween:Play()
             end
@@ -246,7 +273,38 @@ RunService.Heartbeat:Connect(function()
 
     if not getgenv().AutoDungeon then return end
 
-    -- 🟢 GREEN POINT
+    -- 🔴 DESTROY
+    local destroy = FindDestroy()
+    if destroy then
+        getgenv().IsFarmingEnemy = true
+        hrp.CFrame = hrp.CFrame:Lerp(
+            CFrame.new(
+                destroy.Position.X,
+                destroy.Position.Y+HEIGHT_FARM,
+                destroy.Position.Z
+            ),
+            SPEED
+        )
+        return
+    end
+
+    -- 🔴 FARM ENEMY
+    local enemy = FindNearestEnemy(hrp)
+    if enemy then
+        getgenv().IsFarmingEnemy = true
+        hrp.CFrame = hrp.CFrame:Lerp(
+            CFrame.new(
+                enemy.Position.X,
+                enemy.Position.Y+HEIGHT_FARM,
+                enemy.Position.Z
+            ),
+            SPEED
+        )
+        return
+    end
+
+    -- 🟢 CLEAR → GREEN
+    getgenv().IsFarmingEnemy = false
     for _,v in ipairs(workspace:GetDescendants()) do
         if v:IsA("BillboardGui") then
             for _,t in ipairs(v:GetDescendants()) do
@@ -263,15 +321,13 @@ RunService.Heartbeat:Connect(function()
     end
 
     if LastGreen then
-        hrp.CFrame = CFrame.new(
-            hrp.Position:Lerp(
-                Vector3.new(
-                    LastGreen.X,
-                    LastGreen.Y+HEIGHT_GREEN,
-                    LastGreen.Z
-                ),
-                SPEED
-            )
+        hrp.CFrame = hrp.CFrame:Lerp(
+            CFrame.new(
+                LastGreen.X,
+                LastGreen.Y+HEIGHT_GREEN,
+                LastGreen.Z
+            ),
+            SPEED
         )
     end
 end)
@@ -294,7 +350,7 @@ end
 
 task.spawn(function()
     while task.wait(0.0005) do
-        if not getgenv().FastAttack or not getgenv().AutoDungeon then continue end
+        if not getgenv().FastAttack or not getgenv().IsFarmingEnemy then continue end
         local char=LP.Character
         local root=char and char:FindFirstChild("HumanoidRootPart")
         if not root then continue end
