@@ -1,5 +1,5 @@
 --==================================================
--- ZMATRIX | AUTO DUNGEON FULL FINAL FIXED
+-- ZMATRIX | AUTO DUNGEON FULL FINAL (FIX FARM STOP)
 -- UI: Banana UI
 -- PC + Mobile | Delta OK
 --==================================================
@@ -11,17 +11,10 @@ local Library = loadstring(game:HttpGet(
 
 local Main = Library.CreateMain({ Desc = "ZMatrix Auto Dungeon" })
 
-local DungeonPage = Main.CreatePage({
-    Page_Name = "Dungeon",
-    Page_Title = "Dungeon"
-})
+local DungeonPage = Main.CreatePage({Page_Name="Dungeon",Page_Title="Dungeon"})
+local SettingPage = Main.CreatePage({Page_Name="Settings",Page_Title="Settings"})
 
-local SettingPage = Main.CreatePage({
-    Page_Name = "Settings",
-    Page_Title = "Settings"
-})
-
----------------- GLOBAL FLAGS ----------------
+---------------- FLAGS ----------------
 getgenv().AutoDungeon = false
 getgenv().FastAttack  = false
 getgenv().AutoTPZero  = false
@@ -61,7 +54,6 @@ S1.CreateDropdown({
 end)
 
 local S2 = SettingPage.CreateSection("Combat")
-
 S2.CreateToggle({Title="Fast Attack",Default=false},function(v)
     getgenv().FastAttack=v
 end)
@@ -73,14 +65,12 @@ local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualInputManager = game:GetService("VirtualInputManager")
-
 local LP = Players.LocalPlayer
 
 ---------------- CONFIG ----------------
 local HEIGHT_FARM  = 20
 local HEIGHT_GREEN = 7
 local SPEED = 0.6
-local TELEPORT_DIST = 180
 
 ---------------- STATE ----------------
 local LastGreenPos = nil
@@ -88,6 +78,7 @@ local ReturnAfterDie = false
 local ZeroTarget = nil
 local IgnoredEnemies = {}
 local DamageCheck = {}
+local IsFarming = false   -- 🔑 FIX CHÍNH
 
 ---------------- UTILS ----------------
 local function getHRPandHum()
@@ -166,8 +157,6 @@ end)
 
 ---------------- DESTROY ----------------
 local function FindDestroy()
-    local hrp=LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
     for _,v in ipairs(workspace:GetDescendants()) do
         if v:IsA("BillboardGui") then
             for _,t in ipairs(v:GetDescendants()) do
@@ -271,11 +260,13 @@ RunService.Heartbeat:Connect(function()
         return
     end
 
+    -- DIE
     if hum.Health<=0 then
         if LastGreenPos then ReturnAfterDie=true end
         return
     end
 
+    -- RETURN AFTER DIE
     if ReturnAfterDie and LastGreenPos then
         MoveTo(hrp,LastGreenPos,HEIGHT_GREEN)
         if (hrp.Position-LastGreenPos).Magnitude<10 then
@@ -286,20 +277,33 @@ RunService.Heartbeat:Connect(function()
 
     if not getgenv().AutoDungeon then return end
 
+    IsFarming = false -- 🔑 reset mỗi frame
+
     local d=FindDestroy()
-    if d then MoveTo(hrp,d.Position,HEIGHT_FARM) return end
+    if d then
+        IsFarming = true
+        MoveTo(hrp,d.Position,HEIGHT_FARM)
+        return
+    end
 
     local e=FindEnemy(hrp)
-    if e then MoveTo(hrp,e.Position,HEIGHT_FARM) return end
+    if e then
+        IsFarming = true
+        MoveTo(hrp,e.Position,HEIGHT_FARM)
+        return
+    end
 
-    ScanGreen()
-    if LastGreenPos then
-        MoveTo(hrp,LastGreenPos,HEIGHT_GREEN)
+    -- CHỈ GREEN KHI CLEAR
+    if not IsFarming then
+        ScanGreen()
+        if LastGreenPos then
+            MoveTo(hrp,LastGreenPos,HEIGHT_GREEN)
+        end
     end
 end)
 
----------------- FAST ATTACK (USER VERSION) ----------------
--- (GIỮ NGUYÊN BẢN BẠN GỬI – ĐÃ BỌC FLAG)
+---------------- FAST ATTACK (USER VERSION – KEEP) ----------------
+-- (GIỮ NGUYÊN LOGIC BẠN GỬI)
 local remote,idremote
 for _,v in next,({
     ReplicatedStorage.Util,
