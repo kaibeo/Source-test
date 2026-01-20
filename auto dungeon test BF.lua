@@ -1,5 +1,5 @@
 --==================================================
--- ZMATRIX | AUTO DUNGEON FULL FINAL (TP FIX)
+-- ZMATRIX | AUTO DUNGEON FULL FINAL (ALL FIX)
 -- Banana UI | PC + Mobile | Delta OK
 --==================================================
 
@@ -83,7 +83,7 @@ local SPEED        = 0.6
 local State = "FARM"              -- FARM / GREEN / RETURN
 local LastGreenPos = nil
 local ZeroTarget = nil
-local IsTeleporting = false   -- 🔥 FIX TP
+local IsTeleporting = false
 
 ---------------- UTILS ----------------
 local function getHRPandHum()
@@ -103,7 +103,7 @@ local function LockY(hrp)
     bp.Parent = hrp
 end
 
--- MOVE: KHÔNG XOAY THEO NGƯỜI / QUÁI / CAMERA
+-- MOVE: KHÔNG XOAY THEO NGƯỜI / CAMERA
 local function MoveTo(hrp,pos,height)
     hrp.AssemblyLinearVelocity = Vector3.zero
     hrp.AssemblyAngularVelocity = Vector3.zero
@@ -114,7 +114,7 @@ local function MoveTo(hrp,pos,height)
     )
 end
 
----------------- GREEN ----------------
+---------------- GREEN (CHỈ ĐỌC MÀU) ----------------
 local function ScanGreen()
     for _,v in ipairs(workspace:GetDescendants()) do
         if v:IsA("BillboardGui") then
@@ -167,7 +167,7 @@ local function HasEnemy()
     return false
 end
 
----------------- DESTROY ----------------
+---------------- DESTROY (ƯU TIÊN) ----------------
 local function FindDestroy()
     for _,v in ipairs(workspace:GetDescendants()) do
         if v:IsA("BillboardGui") then
@@ -183,7 +183,7 @@ local function FindDestroy()
     end
 end
 
----------------- TP 0/4 ----------------
+---------------- TP 0/4 (FIX LỒNG ĐẤT) ----------------
 local function FindZero()
     local list={}
     for _,v in ipairs(workspace:GetDescendants()) do
@@ -212,23 +212,24 @@ RunService.Heartbeat:Connect(function()
 
     LockY(hrp)
 
-    -- 🔵 TP RANDOM 0/4 (FIX)
+    -- 🔵 TP RANDOM 0/4 (ALL FIX)
     if getgenv().AutoTPZero then
         if not IsTeleporting then
-            IsTeleporting = true
-            ZeroTarget = FindZero()
-
+            IsTeleporting=true
+            ZeroTarget=FindZero()
             if ZeroTarget then
                 TweenService:Create(
                     hrp,
-                    TweenInfo.new((hrp.Position-ZeroTarget.Position).Magnitude/250, Enum.EasingStyle.Linear),
-                    {CFrame=ZeroTarget.CFrame+Vector3.new(0,5,0)}
+                    TweenInfo.new((hrp.Position-ZeroTarget.Position).Magnitude/250,Enum.EasingStyle.Linear),
+                    {CFrame=CFrame.new(ZeroTarget.Position+Vector3.new(0,6,0))}
                 ):Play()
             else
                 getgenv().AutoTPZero=false
                 IsTeleporting=false
             end
-        elseif ZeroTarget and (hrp.Position-ZeroTarget.Position).Magnitude<7 then
+        elseif ZeroTarget
+        and math.abs(hrp.Position.X-ZeroTarget.Position.X)<6
+        and math.abs(hrp.Position.Z-ZeroTarget.Position.Z)<6 then
             VirtualInputManager:SendKeyEvent(true,Enum.KeyCode.E,false,game)
             task.wait(0.05)
             VirtualInputManager:SendKeyEvent(false,Enum.KeyCode.E,false,game)
@@ -236,7 +237,7 @@ RunService.Heartbeat:Connect(function()
             getgenv().AutoTPZero=false
             IsTeleporting=false
         end
-        return -- ❗ KHÓA AUTO DUNGEON KHI TP
+        return
     end
 
     if not getgenv().AutoDungeon then return end
