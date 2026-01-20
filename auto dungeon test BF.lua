@@ -1,5 +1,5 @@
 --==================================================
--- ZMATRIX | AUTO DUNGEON FULL FINAL (STABLE)
+-- ZMATRIX | AUTO DUNGEON FULL FINAL (TP FIX)
 -- Banana UI | PC + Mobile | Delta OK
 --==================================================
 
@@ -83,6 +83,7 @@ local SPEED        = 0.6
 local State = "FARM"              -- FARM / GREEN / RETURN
 local LastGreenPos = nil
 local ZeroTarget = nil
+local IsTeleporting = false   -- 🔥 FIX TP
 
 ---------------- UTILS ----------------
 local function getHRPandHum()
@@ -113,7 +114,7 @@ local function MoveTo(hrp,pos,height)
     )
 end
 
----------------- GREEN (CHỈ ĐỌC MÀU XANH) ----------------
+---------------- GREEN ----------------
 local function ScanGreen()
     for _,v in ipairs(workspace:GetDescendants()) do
         if v:IsA("BillboardGui") then
@@ -166,7 +167,7 @@ local function HasEnemy()
     return false
 end
 
----------------- DESTROY (ƯU TIÊN) ----------------
+---------------- DESTROY ----------------
 local function FindDestroy()
     for _,v in ipairs(workspace:GetDescendants()) do
         if v:IsA("BillboardGui") then
@@ -211,25 +212,31 @@ RunService.Heartbeat:Connect(function()
 
     LockY(hrp)
 
-    -- TP RANDOM 0/4
+    -- 🔵 TP RANDOM 0/4 (FIX)
     if getgenv().AutoTPZero then
-        if not ZeroTarget then
-            ZeroTarget=FindZero()
+        if not IsTeleporting then
+            IsTeleporting = true
+            ZeroTarget = FindZero()
+
             if ZeroTarget then
                 TweenService:Create(
                     hrp,
-                    TweenInfo.new((hrp.Position-ZeroTarget.Position).Magnitude/250),
+                    TweenInfo.new((hrp.Position-ZeroTarget.Position).Magnitude/250, Enum.EasingStyle.Linear),
                     {CFrame=ZeroTarget.CFrame+Vector3.new(0,5,0)}
                 ):Play()
+            else
+                getgenv().AutoTPZero=false
+                IsTeleporting=false
             end
-        elseif (hrp.Position-ZeroTarget.Position).Magnitude<7 then
+        elseif ZeroTarget and (hrp.Position-ZeroTarget.Position).Magnitude<7 then
             VirtualInputManager:SendKeyEvent(true,Enum.KeyCode.E,false,game)
             task.wait(0.05)
             VirtualInputManager:SendKeyEvent(false,Enum.KeyCode.E,false,game)
             ZeroTarget=nil
             getgenv().AutoTPZero=false
+            IsTeleporting=false
         end
-        return
+        return -- ❗ KHÓA AUTO DUNGEON KHI TP
     end
 
     if not getgenv().AutoDungeon then return end
