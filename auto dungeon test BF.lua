@@ -1,7 +1,7 @@
 -- =====================================================
 -- AUTO DUNGEON FULL FINAL
--- Base: AUTO GREEN CORE (USER)
--- PC + Mobile | Delta X | Stable
+-- Green Diamond Priority | Sync Dungeon Mode
+-- PC + Mobile | Delta OK
 -- =====================================================
 
 -- ================== LOAD WINDUI ==================
@@ -10,13 +10,15 @@ local WindUI = loadstring(game:HttpGet(
 ))()
 
 local Window = WindUI:CreateWindow({
-    Title = "Auto Dungeon",
-    Icon = "home",
-    Author = "Final Build",
+    Title = "ZMatrix | Auto Dungeon",
+    Icon = "ghost",
+    Folder = "ZM_Dungeon",
+    Size = UDim2.fromOffset(580,460),
+    Theme = "Dark",
 })
 
-local DungeonTab = Window:Tab({ Name = "Dungeon", Icon = "swords" })
-local SettingTab = Window:Tab({ Name = "Setting", Icon = "settings" })
+local DungeonTab = Window:Tab({ Name = "Dungeon", Icon = "sword" })
+local SettingTab = Window:Tab({ Name = "Settings", Icon = "settings" })
 
 -- ================== GLOBAL FLAGS ==================
 getgenv().AutoDungeon      = false
@@ -32,34 +34,6 @@ DungeonTab:Toggle({
     Callback = function(v) getgenv().AutoDungeon = v end
 })
 
-DungeonTab:Button({
-    Name = "TP Random (0/4)",
-    Callback = function()
-        local TweenService = game:GetService("TweenService")
-        local lp = game.Players.LocalPlayer
-        local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-
-        local areas = {}
-        for _,v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("BillboardGui") then
-                local lb = v:FindFirstChildWhichIsA("TextLabel")
-                if lb and lb.Text == "0/4" and v.Adornee and v.Adornee:IsA("BasePart") then
-                    table.insert(areas, v.Adornee)
-                end
-            end
-        end
-        if #areas == 0 then return end
-
-        local t = areas[math.random(#areas)]
-        TweenService:Create(
-            hrp,
-            TweenInfo.new((hrp.Position - t.Position).Magnitude / 250, Enum.EasingStyle.Linear),
-            {CFrame = t.CFrame + Vector3.new(0,5,0)}
-        ):Play()
-    end
-})
-
 DungeonTab:Toggle({
     Name = "Auto Start Dungeon",
     Callback = function(v) getgenv().AutoStartDungeon = v end
@@ -67,24 +41,20 @@ DungeonTab:Toggle({
 
 DungeonTab:Dropdown({
     Name = "Select Dungeon Mode",
-    Options = {
-        {Name="Normal",Value="Normal"},
-        {Name="Hard",Value="Hard"},
-        {Name="Challenge",Value="Challenge"}
-    },
+    Options = { "Normal", "Hard", "Challenge" },
     Default = "Normal",
-    Callback = function(v) getgenv().DungeonMode = v end
+    Callback = function(v)
+        getgenv().DungeonMode = v
+    end
 })
 
 DungeonTab:Dropdown({
     Name = "Select Weapon Type",
-    Options = {
-        {Name="Melee",Value="Melee"},
-        {Name="Sword",Value="Sword"},
-        {Name="Fruit",Value="Fruit"}
-    },
+    Options = { "Melee", "Sword", "Fruit" },
     Default = "Melee",
-    Callback = function(v) getgenv().PreferredWeapon = v end
+    Callback = function(v)
+        getgenv().PreferredWeapon = v
+    end
 })
 
 SettingTab:Toggle({
@@ -96,10 +66,43 @@ SettingTab:Toggle({
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 local LP = Players.LocalPlayer
 
 -- =====================================================
--- ===== AUTO GREEN CORE (GIỮ NGUYÊN)
+-- AUTO SELECT DUNGEON MODE (SYNC UI -> GAME GUI)
+-- =====================================================
+local function AutoSelectDungeonMode()
+    local playerGui = LP:FindFirstChild("PlayerGui")
+    if not playerGui then return end
+
+    local gui = playerGui:FindFirstChild("DungeonSettings", true)
+    if not gui or not gui.Enabled then return end
+
+    for _,obj in ipairs(gui:GetDescendants()) do
+        if obj:IsA("TextButton") then
+            local btnText = (obj.Text or ""):lower()
+            local mode = (getgenv().DungeonMode or ""):lower()
+            if btnText ~= "" and mode ~= "" and btnText:find(mode) then
+                pcall(function()
+                    firesignal(obj.MouseButton1Click)
+                end)
+                return
+            end
+        end
+    end
+end
+
+task.spawn(function()
+    while task.wait(0.4) do
+        if getgenv().AutoStartDungeon then
+            AutoSelectDungeonMode()
+        end
+    end
+end)
+
+-- =====================================================
+-- AUTO GREEN CORE (GREEN DIAMOND ONLY)
 -- =====================================================
 local HEIGHT_NORMAL = 20
 local HEIGHT_GREEN  = 10
@@ -110,22 +113,39 @@ local GREEN_HALF_RANGE = 500
 local SCAN_INTERVAL = 0.15
 local STUCK_TIME = 1.2
 
-local State = "SEARCH_GREEN"
+local GreenLock = false
 local lastGreenPos = nil
+local lastGreenPosAfterDie = nil
+local needReturnAfterDie = false
 local lastHRPPos = nil
 local lastMoveTick = os.clock()
 local scanTick = 0
+local lastEnemyTime = 0
 
+-- ================== SAFE GET ==================
 local function getHRPandHum()
     local char = LP.Character
     if not char then return end
     local hrp = char:FindFirstChild("HumanoidRootPart")
     local hum = char:FindFirstChildOfClass("Humanoid")
-    if hrp and hum then
-        return hrp, hum
-    end
+    if hrp and hum then return hrp, hum end
 end
 
+-- ================== LOCK Y ==================
+local function LockY(hrp)
+    local bp = hrp:FindFirstChild("Y_LOCK")
+    if not bp then
+        bp = Instance.new("BodyPosition")
+        bp.Name = "Y_LOCK"
+        bp.MaxForce = Vector3.new(0, math.huge, 0)
+        bp.P = 60000
+        bp.D = 1200
+        bp.Parent = hrp
+    end
+    bp.Position = Vector3.new(0, hrp.Position.Y, 0)
+end
+
+-- ================== MOVE ==================
 local function MoveTo(hrp, pos, height)
     local dist = (Vector3.new(pos.X, hrp.Position.Y, pos.Z) - hrp.Position).Magnitude
     local speed = dist > 60 and FAST_SPEED or BASE_SPEED
@@ -140,27 +160,27 @@ local function MoveTo(hrp, pos, height)
             hrp.Position.Z + (pos.Z - hrp.Position.Z) * speed
         )
     )
-
     lastMoveTick = os.clock()
 end
 
+-- ================== SCAN GREEN (ICON ONLY) ==================
 local function ScanGreen(hrp)
     if os.clock() - scanTick < SCAN_INTERVAL then return end
     scanTick = os.clock()
 
-    for _,v in ipairs(workspace:GetDescendants()) do
-        if v:IsA("BillboardGui") then
-            local part = v.Adornee or v.Parent
+    for _, gui in ipairs(Workspace:GetDescendants()) do
+        if gui:IsA("BillboardGui") then
+            local part = gui.Adornee
             if part and part:IsA("BasePart") then
-                local dx = math.abs(part.Position.X - hrp.Position.X)
-                local dz = math.abs(part.Position.Z - hrp.Position.Z)
-                if dx <= GREEN_HALF_RANGE and dz <= GREEN_HALF_RANGE then
-                    for _,ui in ipairs(v:GetDescendants()) do
-                        if ui:IsA("TextLabel") then
-                            local c = ui.TextColor3
-                            if c.G > c.R and c.G > c.B then
+                local flatDist = (Vector3.new(part.Position.X,0,part.Position.Z)
+                    - Vector3.new(hrp.Position.X,0,hrp.Position.Z)).Magnitude
+                if flatDist <= GREEN_HALF_RANGE then
+                    for _, ui in ipairs(gui:GetDescendants()) do
+                        if (ui:IsA("Frame") or ui:IsA("ImageLabel")) then
+                            local c = ui.BackgroundColor3
+                            if c and c.G > c.R and c.G > c.B then
                                 lastGreenPos = part.Position
-                                State = "MOVE_GREEN"
+                                GreenLock = true
                                 return
                             end
                         end
@@ -171,112 +191,87 @@ local function ScanGreen(hrp)
     end
 end
 
--- =====================================================
--- ===== FARM / DESTROY / FILTER
--- =====================================================
-local function IsShadow(name)
-    return name:lower():find("shadow")
-end
-
-local function FindDestroy()
-    local e = workspace:FindFirstChild("Enemies")
-    if not e then return end
-    for _,v in ipairs(e:GetChildren()) do
-        if v.Name:lower():find("destroy") then
-            local h = v:FindFirstChild("Humanoid")
-            local r = v:FindFirstChild("HumanoidRootPart")
-            if h and r and h.Health > 0 then
-                return r
-            end
-        end
-    end
-end
-
+-- ================== ENEMY ==================
 local function FindEnemy(hrp)
-    local e = workspace:FindFirstChild("Enemies")
+    local e = Workspace:FindFirstChild("Enemies")
     if not e then return end
     local best, dist = nil, math.huge
     for _,v in ipairs(e:GetChildren()) do
-        if not IsShadow(v.Name) then
-            local h = v:FindFirstChild("Humanoid")
-            local r = v:FindFirstChild("HumanoidRootPart")
-            if h and r and h.Health > 0 then
-                local d = (r.Position - hrp.Position).Magnitude
-                if d < dist then
-                    dist = d
-                    best = r
-                end
+        local h = v:FindFirstChild("Humanoid")
+        local r = v:FindFirstChild("HumanoidRootPart")
+        if h and r and h.Health > 0 then
+            local d = (r.Position - hrp.Position).Magnitude
+            if d < dist then
+                dist = d
+                best = r
             end
         end
     end
     return best
 end
 
--- =====================================================
--- ===== MAIN AUTO DUNGEON LOOP
--- =====================================================
+-- ================== MAIN LOOP ==================
 RunService.Heartbeat:Connect(function()
     if not getgenv().AutoDungeon then return end
 
     local hrp, hum = getHRPandHum()
     if not hrp or not hum then return end
+    LockY(hrp)
 
-    -- DIE
     if hum.Health <= 0 then
-        State = "RETURN_AFTER_DIE"
+        if lastGreenPos then
+            lastGreenPosAfterDie = lastGreenPos
+            needReturnAfterDie = true
+        end
+        GreenLock = false
         getgenv().IsFarmingEnemy = false
         return
     end
 
-    -- TELEPORT
     if lastHRPPos and (hrp.Position - lastHRPPos).Magnitude > TELEPORT_DISTANCE then
-        State = "SEARCH_GREEN"
+        GreenLock = false
+        needReturnAfterDie = false
+        lastGreenPosAfterDie = nil
     end
     lastHRPPos = hrp.Position
 
-    -- STUCK
     if os.clock() - lastMoveTick > STUCK_TIME then
-        State = "SEARCH_GREEN"
+        GreenLock = false
     end
 
-    -- DESTROY
-    local destroy = FindDestroy()
-    if destroy then
-        getgenv().IsFarmingEnemy = true
-        MoveTo(hrp, destroy.Position, HEIGHT_NORMAL)
+    if needReturnAfterDie and lastGreenPosAfterDie then
+        MoveTo(hrp, lastGreenPosAfterDie, HEIGHT_GREEN)
+        if (hrp.Position - lastGreenPosAfterDie).Magnitude < 10 then
+            needReturnAfterDie = false
+        end
         return
     end
 
-    -- FARM ENEMY
+    if GreenLock and lastGreenPos then
+        MoveTo(hrp, lastGreenPos, HEIGHT_GREEN)
+        if (hrp.Position - lastGreenPos).Magnitude < 8 then
+            GreenLock = false
+        end
+        return
+    end
+
     local enemy = FindEnemy(hrp)
     if enemy then
         getgenv().IsFarmingEnemy = true
+        lastEnemyTime = os.clock()
         MoveTo(hrp, enemy.Position, HEIGHT_NORMAL)
         return
-    else
+    end
+
+    if getgenv().IsFarmingEnemy and os.clock() - lastEnemyTime > 0.3 then
         getgenv().IsFarmingEnemy = false
     end
 
-    -- RETURN AFTER DIE
-    if State == "RETURN_AFTER_DIE" and lastGreenPos then
-        MoveTo(hrp, lastGreenPos, HEIGHT_GREEN)
-        return
-    end
-
-    -- MOVE GREEN
-    if State == "MOVE_GREEN" and lastGreenPos then
-        MoveTo(hrp, lastGreenPos, HEIGHT_GREEN)
-        return
-    end
-
-    -- SEARCH GREEN
     ScanGreen(hrp)
     MoveTo(hrp, hrp.Position, HEIGHT_NORMAL)
 end)
 
--- =====================================================
--- ===== FAST ATTACK (USER VERSION – FIXED)
--- =====================================================
+-- ================== FAST ATTACK (USER VERSION) ==================
 local remote, idremote
 for _, v in next, ({
     ReplicatedStorage.Util,
@@ -311,7 +306,7 @@ task.spawn(function()
         root.AssemblyAngularVelocity = Vector3.zero
 
         local parts = {}
-        for _, x in ipairs({workspace.Enemies, workspace.Characters}) do
+        for _, x in ipairs({Workspace.Enemies, Workspace.Characters}) do
             for _, v in ipairs(x and x:GetChildren() or {}) do
                 local hrp = v:FindFirstChild("HumanoidRootPart")
                 local hum = v:FindFirstChild("Humanoid")
@@ -327,9 +322,7 @@ task.spawn(function()
         end
 
         local tool = char:FindFirstChildOfClass("Tool")
-        if #parts > 0 and tool
-        and (tool:GetAttribute("WeaponType") == "Melee"
-          or tool:GetAttribute("WeaponType") == "Sword") then
+        if #parts > 0 and tool then
             pcall(function()
                 require(ReplicatedStorage.Modules.Net):RemoteEvent("RegisterHit", true)
                 ReplicatedStorage.Modules.Net["RE/RegisterAttack"]:FireServer()
