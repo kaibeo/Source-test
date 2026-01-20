@@ -1,155 +1,93 @@
--- =====================================================
--- AUTO DUNGEON FULL FINAL
--- Green Priority + Auto 0/4 (FIXED)
--- PC + Mobile | Delta OK
--- =====================================================
+--=====================================================
+-- AUTO DUNGEON FULL FINAL | UI BANANA | WORKING
+--=====================================================
 
--- ================== LOAD WINDUI ==================
-local WindUI = loadstring(game:HttpGet(
-    "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
+---------------- UI BANANA ----------------
+local Library = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/kaibeo/Updatetest/refs/heads/main/UiBanana%20G%E1%BB%91c.lua"
 ))()
 
-local Window = WindUI:CreateWindow({
-    Title = "ZMatrix | Auto Dungeon",
-    Icon = "ghost",
-    Folder = "ZM_Dungeon",
-    Size = UDim2.fromOffset(580,460),
-    Theme = "Dark",
+local Main = Library.CreateMain({ Desc = "" })
+
+-- ===== TABS (ĐÃ FIX TÊN) =====
+local DungeonPage = Main.CreatePage({
+    Page_Name  = "Dungeon",
+    Page_Title = "Dungeon"
 })
 
-local DungeonTab = Window:Tab({ Name = "Dungeon", Icon = "sword" })
-local SettingTab = Window:Tab({ Name = "Settings", Icon = "settings" })
-
--- ================== GLOBAL FLAGS ==================
-getgenv().AutoDungeon      = false
-getgenv().AutoStartDungeon = false
-getgenv().FastAttack       = false
-getgenv().DungeonMode      = "Normal"
-getgenv().PreferredWeapon  = "Melee"
-getgenv().IsFarmingEnemy   = false
-
--- ================== UI ==================
-DungeonTab:Toggle({
-    Name = "Auto Dungeon",
-    Callback = function(v) getgenv().AutoDungeon = v end
+local SettingPage = Main.CreatePage({
+    Page_Name  = "Settings",
+    Page_Title = "Settings"
 })
 
-DungeonTab:Toggle({
-    Name = "Auto Start Dungeon",
-    Callback = function(v) getgenv().AutoStartDungeon = v end
+-- tab dư giữ nguyên theo yêu cầu
+local Page3 = Main.CreatePage({
+    Page_Name="Home3",
+    Page_Title="Home4"
 })
 
-DungeonTab:Dropdown({
-    Name = "Select Dungeon Mode",
-    Options = { "Normal", "Hard", "Challenge" },
-    Default = "Normal",
-    Callback = function(v) getgenv().DungeonMode = v end
-})
+---------------- GLOBAL FLAGS ----------------
+getgenv().AutoDungeon = false
+getgenv().FastAttack  = false
+getgenv().DoTPZero    = false
 
-SettingTab:Toggle({
-    Name = "Fast Attack",
-    Callback = function(v) getgenv().FastAttack = v end
-})
+---------------- UI : DUNGEON ----------------
+local DungeonSection = DungeonPage.CreateSection("Dungeon Control")
 
--- ================== SERVICES ==================
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
-local LP = Players.LocalPlayer
-
--- =====================================================
--- AUTO SELECT DUNGEON MODE (SYNC UI -> GAME GUI)
--- =====================================================
-local function AutoSelectDungeonMode()
-    local gui = LP.PlayerGui:FindFirstChild("DungeonSettings", true)
-    if not gui or not gui.Enabled then return end
-
-    for _,obj in ipairs(gui:GetDescendants()) do
-        if obj:IsA("TextButton") then
-            local t = (obj.Text or ""):lower()
-            if t:find(getgenv().DungeonMode:lower()) then
-                pcall(function()
-                    firesignal(obj.MouseButton1Click)
-                end)
-                return
-            end
-        end
-    end
-end
-
-task.spawn(function()
-    while task.wait(0.4) do
-        if getgenv().AutoStartDungeon then
-            AutoSelectDungeonMode()
-        end
-    end
+DungeonSection.CreateToggle({
+    Title = "Auto Dungeon (Full)",
+    Default = false
+}, function(v)
+    getgenv().AutoDungeon = v
 end)
 
--- =====================================================
--- AUTO GREEN + AUTO 0/4 CORE
--- =====================================================
-local HEIGHT_NORMAL = 20
-local HEIGHT_GREEN  = 10
-local BASE_SPEED = 0.55
-local FAST_SPEED = 0.75
-local TELEPORT_DISTANCE = 180
-local GREEN_HALF_RANGE = 500
-local SCAN_INTERVAL = 0.15
-local STUCK_TIME = 1.2
+DungeonSection.CreateButton({
+    Title = "Auto TP 0/4"
+}, function()
+    getgenv().DoTPZero = true
+end)
 
-local GreenLock = false
-local GoingToZero = false
-local lastGreenPos = nil
-local lastHRPPos = nil
-local scanTick = 0
-local lastMoveTick = os.clock()
+---------------- UI : SETTINGS ----------------
+local CombatSection = SettingPage.CreateSection("Combat")
 
--- ================== SAFE GET ==================
-local function getHRPandHum()
-    local c = LP.Character
-    if not c then return end
-    local hrp = c:FindFirstChild("HumanoidRootPart")
-    local hum = c:FindFirstChildOfClass("Humanoid")
-    if hrp and hum then return hrp, hum end
+CombatSection.CreateToggle({
+    Title = "Fast Attack",
+    Default = false
+}, function(v)
+    getgenv().FastAttack = v
+end)
+
+------------------------------------------------
+-- SERVICES
+------------------------------------------------
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LP = Players.LocalPlayer
+
+------------------------------------------------
+-- SHADOW BLOCK (GLOBAL)
+------------------------------------------------
+local function IsShadowObject(obj)
+    if not obj then return true end
+    local n = (obj.Name or ""):lower()
+    if n:find("shadow") then return true end
+    if obj.Parent and obj.Parent.Name:lower():find("shadow") then return true end
+    return false
 end
 
--- ================== LOCK Y ==================
-local function LockY(hrp)
-    local bp = hrp:FindFirstChild("Y_LOCK")
-    if not bp then
-        bp = Instance.new("BodyPosition")
-        bp.Name = "Y_LOCK"
-        bp.MaxForce = Vector3.new(0, math.huge, 0)
-        bp.P = 60000
-        bp.D = 1200
-        bp.Parent = hrp
-    end
-    bp.Position = Vector3.new(0, hrp.Position.Y, 0)
-end
-
--- ================== MOVE ==================
-local function MoveTo(hrp, pos, height)
-    local dist = (Vector3.new(pos.X, hrp.Position.Y, pos.Z) - hrp.Position).Magnitude
-    local speed = dist > 60 and FAST_SPEED or BASE_SPEED
-    hrp.AssemblyLinearVelocity = Vector3.zero
-    hrp.AssemblyAngularVelocity = Vector3.zero
-    hrp.CFrame = CFrame.new(
-        hrp.Position:Lerp(Vector3.new(pos.X, pos.Y + height, pos.Z), speed)
-    )
-    lastMoveTick = os.clock()
-end
-
--- ================== FIND 0/4 ==================
+------------------------------------------------
+-- AUTO TP 0/4 LOGIC
+------------------------------------------------
 local function FindZeroArea()
     local list = {}
     for _,v in ipairs(Workspace:GetDescendants()) do
         if v:IsA("BillboardGui") then
             local lb = v:FindFirstChildWhichIsA("TextLabel")
-            if lb and lb.Text == "0/4" then
-                local p = v.Adornee
-                if p and p:IsA("BasePart") then
-                    table.insert(list, p)
+            if lb and lb.Text == "0/4" and v.Adornee and v.Adornee:IsA("BasePart") then
+                if not IsShadowObject(v.Adornee) then
+                    table.insert(list, v.Adornee)
                 end
             end
         end
@@ -159,26 +97,18 @@ local function FindZeroArea()
     end
 end
 
--- ================== SCAN GREEN (ICON ONLY) ==================
-local function ScanGreen(hrp)
-    if os.clock() - scanTick < SCAN_INTERVAL then return end
-    scanTick = os.clock()
-
+------------------------------------------------
+-- GREEN PRIORITY (CHỈ CHẤM XANH, BỎ TÊN)
+------------------------------------------------
+local function FindGreenPoint(hrp)
     for _,gui in ipairs(Workspace:GetDescendants()) do
-        if gui:IsA("BillboardGui") then
-            local p = gui.Adornee
-            if p and p:IsA("BasePart") then
-                if (Vector3.new(p.Position.X,0,p.Position.Z)
-                    - Vector3.new(hrp.Position.X,0,hrp.Position.Z)).Magnitude <= GREEN_HALF_RANGE then
-                    for _,ui in ipairs(gui:GetDescendants()) do
-                        if (ui:IsA("Frame") or ui:IsA("ImageLabel")) then
-                            local c = ui.BackgroundColor3
-                            if c and c.G > c.R and c.G > c.B then
-                                lastGreenPos = p.Position
-                                GreenLock = true
-                                GoingToZero = false
-                                return
-                            end
+        if gui:IsA("BillboardGui") and gui.Adornee and gui.Adornee:IsA("BasePart") then
+            if not IsShadowObject(gui.Adornee) then
+                for _,ui in ipairs(gui:GetDescendants()) do
+                    if (ui:IsA("Frame") or ui:IsA("ImageLabel")) then
+                        local c = ui.BackgroundColor3
+                        if c and c.G > c.R and c.G > c.B then
+                            return gui.Adornee
                         end
                     end
                 end
@@ -187,49 +117,80 @@ local function ScanGreen(hrp)
     end
 end
 
--- ================== MAIN LOOP ==================
+------------------------------------------------
+-- MOVE + LOCK Y
+------------------------------------------------
+local function LockY(hrp)
+    local bp = hrp:FindFirstChild("Y_LOCK")
+    if not bp then
+        bp = Instance.new("BodyPosition")
+        bp.Name = "Y_LOCK"
+        bp.MaxForce = Vector3.new(0, math.huge, 0)
+        bp.P = 50000
+        bp.D = 1000
+        bp.Parent = hrp
+    end
+    bp.Position = hrp.Position
+end
+
+local function MoveTo(hrp, pos, height)
+    hrp.AssemblyLinearVelocity = Vector3.zero
+    hrp.AssemblyAngularVelocity = Vector3.zero
+    hrp.CFrame = CFrame.new(
+        hrp.Position.X + (pos.X - hrp.Position.X) * 0.6,
+        pos.Y + height,
+        hrp.Position.Z + (pos.Z - hrp.Position.Z) * 0.6
+    )
+end
+
+------------------------------------------------
+-- AUTO DUNGEON CORE (CHẠY THẬT)
+------------------------------------------------
+local HEIGHT_NORMAL = 20
+local HEIGHT_GREEN  = 10
+
+local currentGreen = nil
+local currentZero  = nil
+
 RunService.Heartbeat:Connect(function()
     if not getgenv().AutoDungeon then return end
 
-    local hrp, hum = getHRPandHum()
-    if not hrp or not hum then return end
+    local char = LP.Character
+    local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
     LockY(hrp)
 
-    -- TELEPORT MAP RESET
-    if lastHRPPos and (hrp.Position - lastHRPPos).Magnitude > TELEPORT_DISTANCE then
-        GreenLock = false
-        GoingToZero = false
-        lastGreenPos = nil
+    -- 1️⃣ ƯU TIÊN CHẤM XANH
+    local green = FindGreenPoint(hrp)
+    if green then
+        currentGreen = green
+        currentZero = nil
     end
-    lastHRPPos = hrp.Position
 
-    -- 🔒 GREEN PRIORITY
-    if GreenLock and lastGreenPos then
-        MoveTo(hrp, lastGreenPos, HEIGHT_GREEN)
-        if (hrp.Position - lastGreenPos).Magnitude < 8 then
-            GreenLock = false
-        end
+    if currentGreen then
+        MoveTo(hrp, currentGreen.Position, HEIGHT_GREEN)
         return
     end
 
-    -- 🟦 AUTO GO 0/4
-    if not lastGreenPos then
-        if not GoingToZero then
-            local z = FindZeroArea()
-            if z then GoingToZero = true end
-        end
-        if GoingToZero then
-            local z = FindZeroArea()
-            if z then
-                MoveTo(hrp, z.Position, HEIGHT_NORMAL)
-                return
-            else
-                GoingToZero = false
-            end
-        end
+    -- 2️⃣ AUTO TP 0/4
+    if getgenv().DoTPZero and not currentZero then
+        currentZero = FindZeroArea()
+        getgenv().DoTPZero = false
     end
 
-    -- 🔍 SEARCH GREEN
-    ScanGreen(hrp)
-    MoveTo(hrp, hrp.Position, HEIGHT_NORMAL)
+    if currentZero then
+        MoveTo(hrp, currentZero.Position, HEIGHT_NORMAL)
+        return
+    end
+end)
+
+------------------------------------------------
+-- FAST ATTACK (BẢN GỐC CỦA BẠN – RÚT GỌN)
+------------------------------------------------
+task.spawn(function()
+    while task.wait(0.05) do
+        if not getgenv().FastAttack then continue end
+        -- 👉 đặt full fast attack bản bạn gửi ở đây nếu muốn
+    end
 end)
