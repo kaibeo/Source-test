@@ -26,6 +26,8 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualInputManager = game:GetService("VirtualInputManager")
+local UIS = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 local LP = Players.LocalPlayer
 
 ---------------- UI ----------------
@@ -71,7 +73,7 @@ local SPEED = 0.6
 
 ---------------- STATE ----------------
 local LastGreenPos = nil
-local State = "FARM" -- FARM / RETURN
+local State = "FARM"
 local TP_Target = nil
 local TP_Active = false
 
@@ -82,7 +84,7 @@ local function getChar()
     return c:FindFirstChild("HumanoidRootPart"), c:FindFirstChildOfClass("Humanoid")
 end
 
--- ===== LOCK / UNLOCK Y =====
+---------------- LOCK / UNLOCK Y ----------------
 local function LockY(hrp)
     if hrp:FindFirstChild("LOCK_Y") then return end
     local bp = Instance.new("BodyPosition")
@@ -116,26 +118,26 @@ local function AutoEquip()
     if not hum then return end
 
     for _,tool in ipairs(LP.Backpack:GetChildren()) do
-        if tool:IsA("Tool") then
-            if tool:GetAttribute("WeaponType") == getgenv().WeaponType then
-                hum:EquipTool(tool)
-                return
-            end
+        if tool:IsA("Tool") and tool:GetAttribute("WeaponType")==getgenv().WeaponType then
+            hum:EquipTool(tool)
+            return
         end
     end
 end
 
----------------- GREEN SCAN ----------------
+---------------- GREEN SCAN (NO PLAYER) ----------------
 local function ScanGreen()
-    for _,v in ipairs(workspace:GetDescendants()) do
+    for _,v in ipairs(Workspace:GetDescendants()) do
         if v:IsA("BillboardGui") then
-            for _,t in ipairs(v:GetDescendants()) do
-                if t:IsA("TextLabel") then
-                    local c=t.TextColor3
-                    if c.G>c.R and c.G>c.B then
-                        local p=v.Adornee or v.Parent
-                        if p and p:IsA("BasePart") then
-                            LastGreenPos=p.Position
+            local adornee=v.Adornee
+            if adornee and adornee:IsA("BasePart") then
+                local model=adornee:FindFirstAncestorOfClass("Model")
+                if model and Players:GetPlayerFromCharacter(model) then continue end
+                for _,t in ipairs(v:GetDescendants()) do
+                    if t:IsA("TextLabel") then
+                        local c=t.TextColor3
+                        if c.G>c.R and c.G>c.B then
+                            LastGreenPos=adornee.Position
                             return
                         end
                     end
@@ -151,19 +153,34 @@ local function IsShadow(n)
 end
 
 local function FindDestroy()
-    local e=workspace:FindFirstChild("Enemies")
-    if not e then return end
-    for _,v in ipairs(e:GetChildren()) do
-        if v.Name:lower():find("destroy") then
-            local h=v:FindFirstChildOfClass("Humanoid")
-            local r=v:FindFirstChild("HumanoidRootPart")
-            if h and r and h.Health>0 then return r end
+    local enemies=Workspace:FindFirstChild("Enemies")
+    if not enemies then return end
+    local nearest,dist=nil,math.huge
+    for _,v in ipairs(enemies:GetChildren()) do
+        local hum=v:FindFirstChildOfClass("Humanoid")
+        local hrp=v:FindFirstChild("HumanoidRootPart")
+        if hum and hrp and hum.Health>0 then
+            for _,d in ipairs(v:GetDescendants()) do
+                if d:IsA("BillboardGui") then
+                    for _,t in ipairs(d:GetDescendants()) do
+                        if t:IsA("TextLabel") and t.Text
+                        and t.Text:lower():find("destroy") then
+                            local d2=(hrp.Position-(select(1,getChar())).Position).Magnitude
+                            if d2<dist then
+                                dist=d2
+                                nearest=hrp
+                            end
+                        end
+                    end
+                end
+            end
         end
     end
+    return nearest
 end
 
 local function FindEnemy(hrp)
-    local e=workspace:FindFirstChild("Enemies")
+    local e=Workspace:FindFirstChild("Enemies")
     if not e then return end
     local best,dist=nil,math.huge
     for _,v in ipairs(e:GetChildren()) do
@@ -180,46 +197,13 @@ local function FindEnemy(hrp)
 end
 
 local function HasEnemy()
-    local e=workspace:FindFirstChild("Enemies")
+    local e=Workspace:FindFirstChild("Enemies")
     if not e then return false end
     for _,v in ipairs(e:GetChildren()) do
         local h=v:FindFirstChildOfClass("Humanoid")
-        if h and h.Health>0 and not IsShadow(v.Name) then
-            return true
-        end
+        if h and h.Health>0 and not IsShadow(v.Name) then return true end
     end
     return false
-end
-
----------------- TP RANDOM (<4/4) ----------------
-local function FindRandomDungeon()
-    local list={}
-    for _,v in ipairs(workspace:GetDescendants()) do
-        if v:IsA("BillboardGui") then
-            local lb=v:FindFirstChildWhichIsA("TextLabel")
-            if lb and lb.Text then
-                local a,b=lb.Text:match("(%d+)/(%d+)")
-                a=tonumber(a) b=tonumber(b)
-                if a and b and a<b then
-                    local p=v.Adornee or v.Parent
-                    if p and p:IsA("BasePart") then
-                        table.insert(list,p.Position)
-                    end
-                end
-            end
-        end
-    end
-    if #list>0 then
-        return list[math.random(#list)]
-    end
-end
-
----------------- AUTO START ----------------
-local StartRemote
-for _,v in ipairs(ReplicatedStorage:GetDescendants()) do
-    if v:IsA("RemoteEvent") and v.Name:lower():find("start") then
-        StartRemote=v break
-    end
 end
 
 ---------------- MAIN LOOP ----------------
@@ -227,39 +211,10 @@ RunService.Heartbeat:Connect(function()
     local hrp,hum=getChar()
     if not hrp or not hum then return end
 
-    -- luôn cập nhật chấm xanh
     ScanGreen()
 
     if getgenv().AutoDungeon then
         AutoEquip()
-    end
-
-    -- TP RANDOM
-    if getgenv().AutoTP then
-        UnlockY(hrp)
-        if not TP_Active then
-            TP_Active=true
-            TP_Target=FindRandomDungeon()
-            if TP_Target then
-                TweenService:Create(
-                    hrp,
-                    TweenInfo.new((hrp.Position-TP_Target).Magnitude/250),
-                    {CFrame=CFrame.new(TP_Target.X,TP_Target.Y+10,TP_Target.Z)}
-                ):Play()
-            else
-                getgenv().AutoTP=false
-                TP_Active=false
-            end
-        elseif TP_Target and
-        math.abs(hrp.Position.X-TP_Target.X)<6 and
-        math.abs(hrp.Position.Z-TP_Target.Z)<6 then
-            VirtualInputManager:SendKeyEvent(true,Enum.KeyCode.E,false,game)
-            task.wait(0.05)
-            VirtualInputManager:SendKeyEvent(false,Enum.KeyCode.E,false,game)
-            getgenv().AutoTP=false
-            TP_Active=false
-        end
-        return
     end
 
     if not getgenv().AutoDungeon then
@@ -284,7 +239,7 @@ RunService.Heartbeat:Connect(function()
         return
     end
 
-    -- DESTROY
+    -- DESTROY PRIORITY
     local d=FindDestroy()
     if d then
         LockY(hrp)
@@ -292,7 +247,7 @@ RunService.Heartbeat:Connect(function()
         return
     end
 
-    -- FARM
+    -- FARM ENEMY
     local e=FindEnemy(hrp)
     if e then
         LockY(hrp)
@@ -308,11 +263,6 @@ RunService.Heartbeat:Connect(function()
     end
 
     UnlockY(hrp)
-
-    -- AUTO START
-    if getgenv().AutoStartDungeon and StartRemote then
-        StartRemote:FireServer(getgenv().DungeonMode)
-    end
 end)
 
 ----------------------------------------------------------------
