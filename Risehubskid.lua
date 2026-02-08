@@ -1,3 +1,6 @@
+local API_URL = "https://rise-evo.xyz"
+local KEY_FILE = "riseapi_checkkey.txt"
+
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
@@ -254,9 +257,57 @@ CommF_ = LPH_JIT_MAX(function(...)
 	return Data
 end)
 
+--[[local HttpService = game:GetService("HttpService")
+local Player = game.Players.LocalPlayer
+local FolderName = "RisiHub_BloxFruit"
+local FileName = FolderName .. "/" .. Player.Name .. ".json"
+_G.ConfigData = _G.ConfigData or {}
+setmetatable(_G, {
+    __newindex = function(t, key, value)
+        rawset(t, key, value)
+        if type(value) == "boolean" or type(value) == "number" or type(value) == "string" then
+            if type(key) == "string" and key ~= "ConfigData" then
+                _G.ConfigData[key] = value
+            end
+        end
+    end
+})
+
+_G.SaveSetting = function()
+    local hasData = false
+    for _ in pairs(_G.ConfigData) do hasData = true break end
+    if not hasData then 
+        warn("data not found") 
+        return 
+    end
+    local success, str = pcall(function()
+        if not isfolder(FolderName) then makefolder(FolderName) end
+        return HttpService:JSONEncode(_G.ConfigData)
+    end)
+    if success then
+        writefile(FileName, str)
+    else
+        warn("ecd er" .. tostring(str))
+    end
+end
+_G.LoadSetting = function()
+    if isfile(FileName) then
+        local success, decoded = pcall(function()
+            return HttpService:JSONDecode(readfile(FileName))
+        end)
+        if success and type(decoded) == "table" then
+            for key, value in pairs(decoded) do
+                _G.ConfigData[key] = value
+                rawset(_G, key, value)
+            end
+            print("cf loadded f")
+        end
+    end
+end]]
+
 local HttpService = game:GetService("HttpService")
-local folderMain = "ZMatrix Hub"
-local folderSub = "ZMatrix Hub/lpdata"
+local folderMain = "Rise Evo"
+local folderSub = "Rise Evo/lpdata"
 local fileName = folderSub .. "/" .. lp.Name .. "_data.json"
 if not isfolder(folderMain) then makefolder(folderMain) end
 if not isfolder(folderSub) then makefolder(folderSub) end
@@ -478,8 +529,8 @@ old_tp = LPH_JIT_MAX(function(...)
 
     tweenActive = true
     okeybae(char, false)
-    local bv = root:FindFirstChild("kaibeo") or Instance.new("BodyVelocity")
-    bv.Name, bv.MaxForce, bv.Velocity, bv.Parent = "kaibeo", Vector3.new(1e6, 1e6, 1e6), Vector3.zero, root
+    local bv = root:FindFirstChild("risefanboi") or Instance.new("BodyVelocity")
+    bv.Name, bv.MaxForce, bv.Velocity, bv.Parent = "risefanboi", Vector3.new(1e6, 1e6, 1e6), Vector3.zero, root
 
     lastTweenTarget = target
     currentTween = TweenService:Create(root, TweenInfo.new(d_final / 350, Enum.EasingStyle.Linear), {CFrame = target})
@@ -492,7 +543,7 @@ old_tp = LPH_JIT_MAX(function(...)
                 if tick() - lastTPTime > 2 or not lp.Character or not lp.Character:FindFirstChild("Humanoid") or lp.Character.Humanoid.Health <= 0 then
                     if currentTween then currentTween:Cancel() end
                     local r = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-                    if r and r:FindFirstChild("kaibeo") then r.risefanboi:Destroy() end
+                    if r and r:FindFirstChild("risefanboi") then r.risefanboi:Destroy() end
                     if lp.Character then okeybae(lp.Character, true) end
                     tweenActive, _G.CleaningMonitor = false, false
                     break
@@ -2942,9 +2993,9 @@ end)
 loadstring(game:HttpGet('https://raw.githubusercontent.com/asher-realrise/project/refs/heads/main/stat_inlitizing.lua'))()
 wind = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 local Window = wind:CreateWindow({
-    Title = "ZMatrix Hub | Blox Fruit",
+    Title = "Rise Hub | Evo True V2 - by realrise#0 ",
     Icon = "zap",
-    Author = "Version: <font color=\"#FFD700\">FREEMIUM</font> [ discord.gg/robloxcity]",
+    Author = "Version: <font color=\"#FFD700\">PREMIUM</font> [ discord.gg/URZ5qcVPwc ]",
     Folder = "bet",
     Size = UDim2.fromOffset(580, 460),
     MinSize = Vector2.new(400, 300),
@@ -2978,9 +3029,9 @@ local page11 = Window:Tab({Title = "Race V4",Icon = "dna"})
 local page12 = Window:Tab({Title = "Dungeon",Icon = "rabbit"})
 local page13 = Window:Tab({Title = "Traveling",Icon = "plane"})
 local page7 = Window:Tab({Title = "Sea Event",Icon = "fish"})
-local page8 = Window:Tab({Title = "Volcano",Icon = "mountain-snow", Locked = true})
-local page9 = Window:Tab({Title = "Dojo Quest",Icon = "ribbon", Locked = true})
-local page10 = Window:Tab({Title = "Leviathan",Icon = "sparkles", Locked = true})
+local page8 = Window:Tab({Title = "Volcano",Icon = "mountain-snow"})  -- Xóa , Locked = true
+local page9 = Window:Tab({Title = "Dojo Quest",Icon = "ribbon"})     -- Xóa , Locked = true
+local page10 = Window:Tab({Title = "Leviathan",Icon = "sparkles"})   -- Xóa , Locked = true
 page2:Select()
 
 --local skidder_if = page1:Section({ Title = "Hello World",})
@@ -4622,3 +4673,341 @@ end)
 			if CommF_("BuyGodhuman",true) == 1 then
 				HasGodhuman = true
 			end            ]]
+end
+
+local function Notify(msg)
+    StarterGui:SetCore("SendNotification", { Title = "Rise Auth", Text = msg, Duration = 3 })
+end
+
+local function GetHWID()
+    return (gethwid and gethwid()) or LocalPlayer.UserId
+end
+
+local function Sha256(str)
+    if crypt and crypt.hash then return crypt.hash(str, "sha256") end
+    if syn and syn.crypt then return syn.crypt.hash(str) end
+    return "" 
+end
+
+local function Base64Encode(data)
+    if crypt and crypt.base64encode then return crypt.base64encode(data) end
+    if syn and syn.crypt then return syn.crypt.base64.encode(data) end
+    return HttpService:JSONEncode({data}):sub(2, -2) 
+end
+
+local function GenerateSignature(payloadTable, hwid)
+    local jsonBody = HttpService:JSONEncode(payloadTable)
+    local timestamp = tostring(os.time())
+    local placeId = tostring(game.PlaceId)
+    local seed = hwid:sub(1, 8) .. placeId .. timestamp:sub(-4)
+    local xor_key = Sha256(seed)
+    
+    local encrypted = {}
+    for i = 1, #jsonBody do
+        local b = string.byte(jsonBody, i)
+        local k = string.byte(xor_key, (i - 1) % #xor_key + 1)
+        table.insert(encrypted, string.char(bit32.bxor(b, k)))
+    end
+    local xor_data = table.concat(encrypted)
+    local data_hash = Sha256(xor_data)
+    local combined = data_hash .. xor_data
+    return Base64Encode(combined), timestamp
+end
+
+local function VerifyPremiumKey(key)
+    if not key or #key < 5 then return false, "Key Invalid" end
+    local hwid = GetHWID()
+    local payload = { key = key, hwid = hwid } 
+    local sig, timestamp = GenerateSignature(payload, hwid)
+    
+    local requestUrl = string.format("%s/check_key?key=%s&sig=%s&hwid=%s&game_id=%s&timestamp=%s",
+        API_URL, HttpService:UrlEncode(key), HttpService:UrlEncode(sig), HttpService:UrlEncode(hwid), tostring(game.PlaceId), timestamp)
+    
+    local success, response = pcall(function() return game:HttpGet(requestUrl) end)
+    if success then
+        local data = HttpService:JSONDecode(response)
+        if data.status == "true" then return true, data.type else return false, data.message end
+    end
+    return false, "Connection Error"
+end
+
+local pb_service = 19488
+local pb_host = "https://api.platoboost.app"
+local function lDigest(s) if crypt and crypt.hash then return crypt.hash(s,"sha256") end return s end
+
+local function VerifyPlatoboost(key)
+    local endpoint = pb_host .. "/public/whitelist/" .. tostring(pb_service) .. "?identifier=" .. lDigest(GetHWID()) .. "&key=" .. key
+    local s, r = pcall(function() return game:HttpGet(endpoint) end)
+    if s then
+        local d = HttpService:JSONDecode(r)
+        if d.success and d.data.valid then return true end
+    end
+    return false
+end
+
+local function GetLinkPB()
+    local url = pb_host .. "/public/start"
+    local body = HttpService:JSONEncode({ service = pb_service, identifier = lDigest(GetHWID()) })
+    local s, r = pcall(function() 
+        return request({Url=url, Method="POST", Body=body, Headers={["Content-Type"]="application/json"}})
+    end)
+    if s and r.StatusCode == 200 then
+        local d = HttpService:JSONDecode(r.Body)
+        if d.success then return d.data.url end
+    end
+    return "Error Getting Link"
+end
+
+
+local function CreateUI()
+    if getgenv().RISE_UI_LOADED then return end
+    getgenv().RISE_UI_LOADED = true
+    local ScreenGui = Instance.new("ScreenGui")
+    local MainFrame = Instance.new("Frame")
+    local UIStroke_Main = Instance.new("UIStroke")
+    local GridEffect = Instance.new("ImageLabel")
+    local ParticlesContainer = Instance.new("Frame")
+    ScreenGui.Name = "RiseEvoUI"
+    if gethui then ScreenGui.Parent = gethui() else ScreenGui.Parent = CoreGui end
+    ScreenGui.IgnoreGuiInset = true
+    local TARGET_SIZE = UDim2.new(0, 360, 0, 250) 
+    MainFrame.Name = "MainFrame"
+    MainFrame.Parent = ScreenGui
+    MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(5, 5, 8)
+    MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    MainFrame.Size = TARGET_SIZE
+    MainFrame.ClipsDescendants = true
+    MainFrame.BorderSizePixel = 0
+    MainFrame.BackgroundTransparency = 1 
+    local MainCorner = Instance.new("UICorner")
+    MainCorner.CornerRadius = UDim.new(0, 10)
+    MainCorner.Parent = MainFrame
+    UIStroke_Main.Parent = MainFrame
+    UIStroke_Main.Color = Color3.fromRGB(180, 100, 255)
+    UIStroke_Main.Thickness = 1.2
+    UIStroke_Main.Transparency = 1
+    local CloseBtn = Instance.new("TextButton")
+    CloseBtn.Name = "CloseBtn"
+    CloseBtn.Parent = MainFrame
+    CloseBtn.BackgroundTransparency = 1
+    CloseBtn.Position = UDim2.new(1, -35, 0, 10)
+    CloseBtn.Size = UDim2.new(0, 25, 0, 25)
+    CloseBtn.Font = Enum.Font.Code
+    CloseBtn.Text = "★"
+    CloseBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+    CloseBtn.TextSize = 24
+    CloseBtn.ZIndex = 10
+    CloseBtn.MouseEnter:Connect(function() TweenService:Create(CloseBtn, TweenInfo.new(0.3), {TextColor3 = Color3.fromRGB(255, 50, 50)}):Play() end)
+    CloseBtn.MouseLeave:Connect(function() TweenService:Create(CloseBtn, TweenInfo.new(0.3), {TextColor3 = Color3.fromRGB(150, 150, 150)}):Play() end)
+    CloseBtn.MouseButton1Click:Connect(function()
+        TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {Size = UDim2.new(0, 360, 0, 0), BackgroundTransparency = 1}):Play()
+        task.wait(0.5)
+        ScreenGui:Destroy()
+        getgenv().RISE_UI_LOADED = false
+    end)
+    GridEffect.Name = "GridEffect"
+    GridEffect.Parent = MainFrame
+    GridEffect.BackgroundTransparency = 1
+    GridEffect.Position = UDim2.new(0, 0, 0.4, 0)
+    GridEffect.Size = UDim2.new(1, 0, 0.6, 0)
+    GridEffect.Image = "rbxassetid://10651685382"
+    GridEffect.ImageColor3 = Color3.fromRGB(120, 50, 255)
+    GridEffect.ImageTransparency = 0.8
+    GridEffect.ZIndex = 0
+    ParticlesContainer.Name = "Particles"
+    ParticlesContainer.Parent = MainFrame
+    ParticlesContainer.Size = UDim2.new(1, 0, 1, 0)
+    ParticlesContainer.BackgroundTransparency = 1
+    ParticlesContainer.ZIndex = 1
+    local function CreateParticle()
+        if not MainFrame.Parent then return end
+        local p = Instance.new("Frame")
+        p.Parent = ParticlesContainer
+        p.Size = UDim2.new(0, 2, 0, 2)
+        p.BackgroundColor3 = Color3.fromRGB(200, 150, 255)
+        p.Position = UDim2.new(math.random(), 0, 1, 0)
+        Instance.new("UICorner", p).CornerRadius = UDim.new(1, 0) 
+        local speed = math.random(3, 6)
+        TweenService:Create(p, TweenInfo.new(speed, Enum.EasingStyle.Linear), {
+            Position = UDim2.new(p.Position.X.Scale + (math.random(-1, 1)/10), 0, -0.1, 0),
+            BackgroundTransparency = 1
+        }):Play()
+        Debris:AddItem(p, speed)
+    end
+    task.spawn(function()
+        while MainFrame.Parent and task.wait(0.5) do CreateParticle() end
+    end)
+    local Title = Instance.new("TextLabel")
+    Title.Parent = MainFrame
+    Title.BackgroundTransparency = 1
+    Title.Position = UDim2.new(0, 25, 0, 15)
+    Title.Size = UDim2.new(0, 200, 0, 30)
+    Title.Font = Enum.Font.Code
+    Title.Text = "RISE EVO > AUTHENTICATION"
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.TextSize = 18
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.ZIndex = 5
+    local Divider = Instance.new("Frame")
+    Divider.Parent = MainFrame
+    Divider.BackgroundColor3 = Color3.fromRGB(180, 100, 255)
+    Divider.BorderSizePixel = 0
+    Divider.Position = UDim2.new(0, 25, 0, 45)
+    Divider.Size = UDim2.new(0, 0, 0, 1)
+    Divider.ZIndex = 5
+    local InputContainer = Instance.new("Frame")
+    InputContainer.Parent = MainFrame
+    InputContainer.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    InputContainer.BackgroundTransparency = 0.96
+    InputContainer.Position = UDim2.new(0, 25, 0, 75)
+    InputContainer.Size = UDim2.new(0, 310, 0, 45)
+    InputContainer.ZIndex = 5
+    Instance.new("UICorner", InputContainer).CornerRadius = UDim.new(0, 10)
+    local InputStroke = Instance.new("UIStroke")
+    InputStroke.Parent = InputContainer
+    InputStroke.Color = Color3.fromRGB(60, 60, 80)
+    InputStroke.Thickness = 1
+    local InputBox = Instance.new("TextBox")
+    InputBox.Parent = InputContainer
+    InputBox.BackgroundTransparency = 1
+    InputBox.Size = UDim2.new(1, -20, 1, 0)
+    InputBox.Position = UDim2.new(0, 10, 0, 0)
+    InputBox.Font = Enum.Font.Code
+    InputBox.Text = ""
+    InputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    InputBox.TextSize = 13
+    InputBox.TextXAlignment = Enum.TextXAlignment.Left
+    InputBox.ZIndex = 6
+    if isfile(KEY_FILE) then InputBox.Text = readfile(KEY_FILE) end
+    local Placeholder = Instance.new("TextLabel")
+    Placeholder.Parent = InputContainer
+    Placeholder.BackgroundTransparency = 1
+    Placeholder.Size = UDim2.new(1, -20, 1, 0)
+    Placeholder.Position = UDim2.new(0, 10, 0, 0)
+    Placeholder.Font = Enum.Font.Code
+    Placeholder.Text = "// ENTER KEY (PREMIUM/FREE)"
+    Placeholder.TextColor3 = Color3.fromRGB(120, 120, 120)
+    Placeholder.TextSize = 13
+    Placeholder.TextXAlignment = Enum.TextXAlignment.Left
+    Placeholder.ZIndex = 5
+    InputBox.Focused:Connect(function()
+        TweenService:Create(Placeholder, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {Position = UDim2.new(0, 10, 0, -12), TextSize = 10, TextColor3 = Color3.fromRGB(180, 100, 255)}):Play()
+        TweenService:Create(InputStroke, TweenInfo.new(0.3), {Color = Color3.fromRGB(180, 100, 255)}):Play()
+    end)
+    InputBox.FocusLost:Connect(function()
+        if InputBox.Text == "" then
+            TweenService:Create(Placeholder, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {Position = UDim2.new(0, 10, 0, 0), TextSize = 13, TextColor3 = Color3.fromRGB(120, 120, 120)}):Play()
+            TweenService:Create(InputStroke, TweenInfo.new(0.3), {Color = Color3.fromRGB(60, 60, 80)}):Play()
+        else
+             TweenService:Create(Placeholder, TweenInfo.new(0.3), {Position = UDim2.new(0, 10, 0, -12), TextSize = 10}):Play()
+             TweenService:Create(InputStroke, TweenInfo.new(0.3), {Color = Color3.fromRGB(60, 60, 80)}):Play()
+        end
+    end)
+    if InputBox.Text ~= "" then
+        Placeholder.Position = UDim2.new(0, 10, 0, -12)
+        Placeholder.TextSize = 10
+        Placeholder.TextColor3 = Color3.fromRGB(180, 100, 255)
+    end
+    local function NewBtn(text, pos, color)
+        local b = Instance.new("TextButton")
+        b.Parent = MainFrame
+        b.Size = UDim2.new(0, 150, 0, 35)
+        b.Position = pos
+        b.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        b.BackgroundTransparency = 0.98
+        b.Font = Enum.Font.Code
+        b.Text = text
+        b.TextColor3 = Color3.fromRGB(180, 180, 180)
+        b.TextSize = 11
+        b.ZIndex = 5
+        Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
+        local bs = Instance.new("UIStroke", b)
+        bs.Color = color
+        bs.Transparency = 0.6
+        b.MouseEnter:Connect(function() TweenService:Create(b, TweenInfo.new(0.3), {BackgroundTransparency = 0.9, TextColor3 = Color3.fromRGB(255, 255, 255)}):Play() TweenService:Create(bs, TweenInfo.new(0.3), {Transparency = 0, Thickness = 1.2}):Play() end)
+        b.MouseLeave:Connect(function() TweenService:Create(b, TweenInfo.new(0.3), {BackgroundTransparency = 0.98, TextColor3 = Color3.fromRGB(180, 180, 180)}):Play() TweenService:Create(bs, TweenInfo.new(0.3), {Transparency = 0.6, Thickness = 1}):Play() end)
+        return b
+    end
+    local Discord = NewBtn("DISCORD", UDim2.new(0, 25, 0, 135), Color3.fromRGB(114, 137, 218))
+    local GetKey = NewBtn("GET URL", UDim2.new(0, 185, 0, 135), Color3.fromRGB(255, 170, 0))  
+    local Verify = Instance.new("TextButton")
+    Verify.Parent = MainFrame
+    Verify.BackgroundColor3 = Color3.fromRGB(120, 50, 255)
+    Verify.Position = UDim2.new(0, 25, 0, 185)
+    Verify.Size = UDim2.new(0, 310, 0, 45)
+    Verify.Font = Enum.Font.Code
+    Verify.Text = "VERIFY IDENTITY"
+    Verify.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Verify.TextSize = 14
+    Verify.ZIndex = 5
+    Instance.new("UICorner", Verify).CornerRadius = UDim.new(0, 10)
+    Discord.MouseButton1Click:Connect(function()
+        setclipboard("https://discord.gg/URZ5qcVPwc")
+        Notify("Discord Invite Copied!")
+    end)    
+    GetKey.MouseButton1Click:Connect(function()
+        setclipboard(GetLinkPB())
+        Notify("Get Key Copied!")
+    end)
+    Verify.MouseButton1Click:Connect(function()
+        local input = InputBox.Text:gsub(" ", "")
+        if #input < 5 then Notify("Please enter key!") return end        
+        Verify.Text = "AUTHENTICATING..."
+        local isPrem, kType = VerifyPremiumKey(input)
+        if isPrem then
+            Verify.Text = "GRANTED (PREMIUM)"
+            Verify.BackgroundColor3 = Color3.fromRGB(50, 255, 100)
+            Notify("Welcome Premium User! ("..tostring(kType)..")")
+            writefile(KEY_FILE, input)
+            task.wait(1)
+            TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {Size = UDim2.new(0, 360, 0, 0), BackgroundTransparency = 1}):Play()
+            task.wait(0.5)
+            ScreenGui:Destroy()
+            LoadMainScript()
+            return
+        end
+        local isFree = VerifyPlatoboost(input)
+        if isFree then
+             Verify.Text = "GRANTED (FREE)"
+             Verify.BackgroundColor3 = Color3.fromRGB(50, 255, 100)
+             Notify("Welcome Free User!")
+             writefile(KEY_FILE, input)
+             task.wait(1)
+             TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {Size = UDim2.new(0, 360, 0, 0), BackgroundTransparency = 1}):Play()
+             task.wait(0.5)
+             ScreenGui:Destroy()
+             LoadMainScript()
+             return
+        end
+        Verify.Text = "ACCESS DENIED"
+        Verify.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+        Notify("Invalid Key!")
+        task.wait(1)
+        Verify.Text = "VERIFY IDENTITY"
+        Verify.BackgroundColor3 = Color3.fromRGB(120, 50, 255)
+    end)
+    local smoothness = 0.15
+    RunService.RenderStepped:Connect(function()
+        if not MainFrame.Parent then return end
+        local mPos = UserInputService:GetMouseLocation()
+        local screenSize = workspace.CurrentCamera.ViewportSize
+        local center = Vector2.new(screenSize.X/2, screenSize.Y/2)
+        local diff = (mPos - center)
+        local goalRot = diff.X / 250
+        local goalPosX = 0.5 + (diff.X / (screenSize.X * 15))
+        local goalPosY = 0.5 + (diff.Y / (screenSize.Y * 15))
+        MainFrame.Rotation = MainFrame.Rotation + (goalRot - MainFrame.Rotation) * smoothness
+        MainFrame.Position = MainFrame.Position:Lerp(UDim2.new(goalPosX, 0, goalPosY, 0), smoothness)
+    end)
+    MainFrame.Size = UDim2.new(0, 0, 0, 2)
+    MainFrame.BackgroundTransparency = 0
+    TweenService:Create(MainFrame, TweenInfo.new(0.8, Enum.EasingStyle.Quart), {Size = UDim2.new(0, 360, 0, 2)}):Play()
+    task.wait(0.8)
+    TweenService:Create(MainFrame, TweenInfo.new(0.6, Enum.EasingStyle.Quart), {Size = TARGET_SIZE}):Play()
+    TweenService:Create(UIStroke_Main, TweenInfo.new(1), {Transparency = 0}):Play()
+    task.wait(0.5)
+    TweenService:Create(Divider, TweenInfo.new(1), {Size = UDim2.new(0, 310, 0, 1)}):Play()
+end
+-- Load script trực tiếp không cần key
+LoadMainScript()
