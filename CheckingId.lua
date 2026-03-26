@@ -17,99 +17,102 @@ local islands = {
     "Prehistoric Island"
 }
 
-local sent = false
+-- 💾 MEMORY
+local sentEvents = {}
+local lastScan = 0
 
--- 🌍 DETECT SEA
+-- 🌍 SEA
 local function getSea()
     local id = game.PlaceId
-
-    if id == 2753915549 then
-        return "Sea 1"
-    elseif id == 4442272183 then
-        return "Sea 2"
-    elseif id == 7449423635 then
-        return "Sea 3"
-    end
-
-    return "Unknown"
+    if id == 4442272183 then return "Sea 2"
+    elseif id == 7449423635 then return "Sea 3"
+    else return "Sea 1" end
 end
 
--- 🌕 FULL MOON (REAL)
+-- 🌕 FULL MOON (PRO)
 local function isFullMoon()
     local t = Lighting.ClockTime
-    return t >= 0 and t <= 1
+    
+    -- check time + darkness
+    if t >= 0 and t <= 1 then
+        if Lighting.Brightness <= 2 then
+            return true
+        end
+    end
+    
+    return false
 end
 
--- 🔍 CHECK BOSS
+-- 🔍 BOSS (ANTI FAKE)
 local function hasBoss()
     for _, v in pairs(workspace:GetDescendants()) do
-        for _, b in pairs(bosses) do
-            if string.lower(v.Name) == string.lower(b) then
-                return true, b
+        if v:IsA("Model") and v:FindFirstChild("Humanoid") then
+            
+            for _, b in pairs(bosses) do
+                if string.lower(v.Name) == string.lower(b) then
+                    
+                    local hrp = v:FindFirstChild("HumanoidRootPart")
+                    if hrp and hrp.Position.Magnitude > 1000 then
+                        return true, b
+                    end
+                end
             end
         end
     end
     return false
 end
 
--- 🔍 CHECK ISLAND
+-- 🔍 ISLAND (ANTI FAKE PRO)
 local function hasIsland()
     for _, v in pairs(workspace:GetDescendants()) do
-        for _, i in pairs(islands) do
-            if string.lower(v.Name) == string.lower(i) then
-                return true, i
+        if v:IsA("Model") then
+            
+            for _, i in pairs(islands) do
+                if string.lower(v.Name) == string.lower(i) then
+                    
+                    local part = v:FindFirstChildWhichIsA("BasePart")
+                    
+                    if part then
+                        local pos = part.Position.Magnitude
+                        local size = part.Size.Magnitude
+                        
+                        -- chống island ảo
+                        if pos > 3000 and size > 80 then
+                            return true, i
+                        end
+                    end
+                end
             end
         end
     end
     return false
 end
 
--- 📤 EMBED
-local function sendEmbed(eventType, name)
-    local playerCount = #Players:GetPlayers()
-    local jobId = game.JobId
+-- 📤 EMBED (ĐẸP)
+local function send(event, name)
+    local key = event .. (name or "")
+    if sentEvents[key] then return end
+    sentEvents[key] = true
+
     local sea = getSea()
 
-    local title, color, main
-
-    if eventType == "moon" then
-        title = "🌕 Full Moon ["..sea.."]"
-        color = 65280
-        main = "**[🌕] Moon Phase:**\n```Full Moon 100%```"
-
-    elseif eventType == "boss" then
-        title = "🔥 Boss Found ["..sea.."]"
-        color = 16711680
-        main = "**[👹] Boss:**\n```" .. name .. "```"
-
-    elseif eventType == "island" then
-        title = "🏝️ Special Island ["..sea.."]"
-        color = 3447003
-        main = "**[🌴] Island:**\n```" .. name .. "```"
-    end
-
     local data = {
-        ["username"] = "Kaibeo Scanner ⚡",
+        ["username"] = "Scanner Pro ⚡",
         ["embeds"] = {{
-            ["title"] = title,
-            ["color"] = color,
+            ["title"] = event.." ["..sea.."]",
+            ["color"] = (event == "🌕 FULL MOON" and 65280)
+                      or (event == "🔥 BOSS" and 16711680)
+                      or 3447003,
 
             ["description"] =
-                main .. "\n\n" ..
+                "**Event:**\n```"..event.."```\n\n" ..
+                "**Name:**\n```"..(name or "N/A").."```\n\n" ..
+                "**Players:**\n```"..#Players:GetPlayers().."/12```\n\n" ..
+                "**JobId:**\n```"..game.JobId.."```\n\n" ..
+                "**Join:**\n```lua\n" ..
+                "game:GetService(\"ReplicatedStorage\").__ServerBrowser:InvokeServer(\"teleport\", \""..game.JobId.."\")\n```",
 
-                "**[👤] Player Count:**\n```" .. playerCount .. "/12```\n\n" ..
-
-                "**[🌍] Sea:**\n```" .. sea .. "```\n\n" ..
-
-                "**[🔗] Job ID:**\n```" .. jobId .. "```\n\n" ..
-
-                "**[📜] Join Script:**\n```lua\n" ..
-                "game:GetService(\"ReplicatedStorage\").__ServerBrowser:InvokeServer(\"teleport\", \"" .. jobId .. "\")\n```",
-
-            ["footer"] = {
-                ["text"] = "Scanner System | Final"
-            },
-
+            ["footer"] = {["text"] = "Scanner Pro Max"},
             ["timestamp"] = DateTime.now():ToIsoDate()
         }}
     }
@@ -122,37 +125,51 @@ local function sendEmbed(eventType, name)
     })
 end
 
--- ⏳ CHỜ LOAD MAP
-task.wait(5)
+-- 🚀 STREAM FIX (LOAD XA)
+local function streamFix()
+    pcall(function()
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") then
+                Players.LocalPlayer:RequestStreamAroundAsync(v.Position)
+            end
+        end
+    end)
+end
+
+-- ⏳ LOAD MAP (QUAN TRỌNG)
+local loadTime = math.random(30,60)
+print("Loading map: "..loadTime.."s")
+task.wait(loadTime)
 
 -- 🔁 LOOP
-while task.wait(5) do
-    if not sent then
-        local sea = getSea()
+while true do
+    -- chống spam scan
+    if tick() - lastScan >= 120 then
+        lastScan = tick()
 
+        -- load lại vùng xa
+        streamFix()
+
+        local sea = getSea()
         local full = isFullMoon()
         local boss, bossName = hasBoss()
         local island, islandName = hasIsland()
 
-        -- 🌕 FULL MOON (CHỈ SEA 3)
+        -- 🌕 FULL MOON (ưu tiên cao nhất)
         if full and sea == "Sea 3" then
-            sendEmbed("moon")
-            sent = true
+            send("🌕 FULL MOON")
 
         -- 👹 BOSS
         elseif boss then
-            -- ❌ chặn rip_indra ở Sea 2
-            if sea == "Sea 2" and string.lower(bossName):find("indra") then
-                -- bỏ qua
-            else
-                sendEmbed("boss", bossName)
-                sent = true
+            if not (sea == "Sea 2" and string.lower(bossName):find("indra")) then
+                send("🔥 BOSS", bossName)
             end
 
         -- 🏝️ ISLAND
         elseif island then
-            sendEmbed("island", islandName)
-            sent = true
+            send("🏝️ ISLAND", islandName)
         end
     end
+
+    task.wait(1)
 end
