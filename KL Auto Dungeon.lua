@@ -1,8 +1,9 @@
 --// SETTINGS
 getgenv().Setting = {
     Farm = true,
-    Distance = 3,
+    Height = 10,
     Speed = 70,
+    Distance = 3,
     ScanDelay = 0.5,
 
     Weapons = {
@@ -16,44 +17,55 @@ getgenv().Setting = {
 local plr = game.Players.LocalPlayer
 local Vim = game:GetService("VirtualInputManager")
 
---// CHAR
+--// GET CHAR SAFE
 function GetChar()
     return plr.Character or plr.CharacterAdded:Wait()
 end
 
---// GET MOBS
+--// SAFE HRP
+function GetHRP()
+    local char = GetChar()
+    return char:WaitForChild("HumanoidRootPart")
+end
+
+--// GET MOBS SAFE
 function GetMobs()
     local mobs = {}
 
     for _,v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Model")
-        and v:FindFirstChild("Humanoid")
-        and v:FindFirstChild("HumanoidRootPart")
-        and v.Humanoid.Health > 0 then
-            table.insert(mobs, v)
+        if v:IsA("Model") then
+            local hum = v:FindFirstChild("Humanoid")
+            local hrp = v:FindFirstChild("HumanoidRootPart")
+
+            if hum and hrp and hum.Health > 0 then
+                table.insert(mobs, v)
+            end
         end
     end
 
     return mobs
 end
 
---// TARGET (ƯU TIÊN BOSS)
+--// TARGET (ưu tiên boss)
 function GetTarget(hrp)
     local boss, normal = nil, nil
     local dist = math.huge
 
     for _,v in pairs(GetMobs()) do
-        local d = (hrp.Position - v.HumanoidRootPart.Position).Magnitude
+        local hrp2 = v:FindFirstChild("HumanoidRootPart")
+        if hrp2 then
+            local d = (hrp.Position - hrp2.Position).Magnitude
 
-        if v.Name:lower():find("boss") then
-            if d < dist then
-                boss = v
-                dist = d
-            end
-        elseif not boss then
-            if d < dist then
-                normal = v
-                dist = d
+            if v.Name:lower():find("boss") then
+                if d < dist then
+                    boss = v
+                    dist = d
+                end
+            elseif not boss then
+                if d < dist then
+                    normal = v
+                    dist = d
+                end
             end
         end
     end
@@ -61,15 +73,30 @@ function GetTarget(hrp)
     return boss or normal
 end
 
---// MOVE (LEGIT)
-function MoveTo(hrp, pos)
-    local dir = (pos - hrp.Position).Unit
-    hrp.Velocity = dir * Setting.Speed
+--// MOVE (ỔN ĐỊNH)
+function FlyTo(hrp, pos)
+    local dir = (pos - hrp.Position)
+    if dir.Magnitude > 1 then
+        hrp.Velocity = dir.Unit * Setting.Speed
+    end
 end
 
 --// LOOK
 function LookAt(hrp, pos)
     hrp.CFrame = CFrame.new(hrp.Position, pos)
+end
+
+--// CLICK
+function Click()
+    Vim:SendMouseButtonEvent(0,0,0,true,game,0)
+    Vim:SendMouseButtonEvent(0,0,0,false,game,0)
+end
+
+--// SKILL
+function Skill(key)
+    Vim:SendKeyEvent(true,key,false,game)
+    task.wait(0.1)
+    Vim:SendKeyEvent(false,key,false,game)
 end
 
 --// EQUIP
@@ -82,34 +109,21 @@ function Equip(name)
     end
 end
 
---// CLICK (M1)
-function Click()
-    Vim:SendMouseButtonEvent(0,0,0,true,game,0)
-    Vim:SendMouseButtonEvent(0,0,0,false,game,0)
-end
-
---// SKILL
-function Skill(key)
-    Vim:SendKeyEvent(true,key,false,game)
-    task.wait(0.12)
-    Vim:SendKeyEvent(false,key,false,game)
-end
-
 --// COMBO
 function DoCombo(mob)
-    local hrp = GetChar():WaitForChild("HumanoidRootPart")
+    local hrp = GetHRP()
     local mobHRP = mob.HumanoidRootPart
 
     LookAt(hrp, mobHRP.Position)
 
-    -- M1 mở đầu
+    -- M1
     for i=1,2 do
         Click()
         task.wait(0.1)
     end
 
-    -- skill gần
-    if (hrp.Position - mobHRP.Position).Magnitude < 6 then
+    -- skill
+    if (hrp.Position - mobHRP.Position).Magnitude < 7 then
         for _,k in pairs({"Z","X","C","V"}) do
             Skill(k)
         end
@@ -121,28 +135,61 @@ function WaveActive()
     return #GetMobs() > 0
 end
 
---// MAIN AI
+--// DETECT CAST SKILL
+function IsCasting(mob)
+    local hum = mob:FindFirstChild("Humanoid")
+    local hrp = mob:FindFirstChild("HumanoidRootPart")
+
+    if not hum or not hrp then return false end
+
+    local move = hum.MoveDirection.Magnitude
+    local vel = hrp.Velocity.Magnitude
+
+    return (move == 0 and vel < 1)
+end
+
+--// DODGE (NHẸ - KHÔNG BUG)
+function Dodge(hrp, mob)
+    local base = mob.HumanoidRootPart.Position
+
+    local offset = Vector3.new(
+        math.random(-15,15),
+        15,
+        math.random(-15,15)
+    )
+
+    hrp.CFrame = CFrame.new(base + offset)
+end
+
+--// MAIN
 spawn(function()
     while Setting.Farm do
         pcall(function()
 
-            local char = GetChar()
-            local hrp = char:WaitForChild("HumanoidRootPart")
+            local hrp = GetHRP()
 
             if WaveActive() then
-                -- 🟢 FARM WAVE
                 local mob = GetTarget(hrp)
-                if mob then
+
+                if mob and mob:FindFirstChild("HumanoidRootPart") then
                     local mobHRP = mob.HumanoidRootPart
 
-                    local targetPos = mobHRP.Position + Vector3.new(0,0,Setting.Distance)
+                    -- 🔴 né nếu đang cast
+                    if IsCasting(mob) then
+                        Dodge(hrp, mob)
+                        task.wait(0.25)
+                    else
+                        -- 🟢 bay lên đầu
+                        local target = mobHRP.Position + Vector3.new(0,Setting.Height,0)
+                        FlyTo(hrp, target)
 
-                    MoveTo(hrp, targetPos)
-                    LookAt(hrp, mobHRP.Position)
+                        -- giữ ổn định
+                        hrp.Velocity = hrp.Velocity * 0.9
 
-                    for _,wp in pairs(Setting.Weapons) do
-                        Equip(wp)
-                        DoCombo(mob)
+                        for _,wp in pairs(Setting.Weapons) do
+                            Equip(wp)
+                            DoCombo(mob)
+                        end
                     end
                 end
 
@@ -150,14 +197,6 @@ spawn(function()
                 -- 🔴 HẾT WAVE → ĐỨNG CHỜ
                 hrp.Velocity = Vector3.zero
                 task.wait(Setting.ScanDelay)
-
-                -- phát hiện wave mới → lao tới ngay
-                if WaveActive() then
-                    local mob = GetTarget(hrp)
-                    if mob then
-                        MoveTo(hrp, mob.HumanoidRootPart.Position)
-                    end
-                end
             end
 
         end)
