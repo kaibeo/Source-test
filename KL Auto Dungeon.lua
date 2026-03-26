@@ -1,45 +1,59 @@
 --// SETTINGS
-getgenv().Farm = true
-getgenv().Distance = 3
-getgenv().Speed = 120
+getgenv().Setting = {
+    Farm = true,
+    Distance = 3,
+    Speed = 70,
+    ScanDelay = 0.5,
 
-getgenv().Weapons = {
-    "Sword",
-    "Fruit",
-    "Melee"
+    Weapons = {
+        "Sword",
+        "Fruit",
+        "Melee"
+    }
 }
 
 --// SERVICES
 local plr = game.Players.LocalPlayer
-local char = plr.Character or plr.CharacterAdded:Wait()
-local hrp = char:WaitForChild("HumanoidRootPart")
-
-local TweenService = game:GetService("TweenService")
 local Vim = game:GetService("VirtualInputManager")
 
---// GET TARGET (ưu tiên boss)
-function GetTarget()
-    local boss, normal = nil, nil
-    local dist = math.huge
+--// CHAR
+function GetChar()
+    return plr.Character or plr.CharacterAdded:Wait()
+end
+
+--// GET MOBS
+function GetMobs()
+    local mobs = {}
 
     for _,v in pairs(workspace:GetDescendants()) do
         if v:IsA("Model")
         and v:FindFirstChild("Humanoid")
         and v:FindFirstChild("HumanoidRootPart")
         and v.Humanoid.Health > 0 then
+            table.insert(mobs, v)
+        end
+    end
 
-            local d = (hrp.Position - v.HumanoidRootPart.Position).Magnitude
+    return mobs
+end
 
-            if v.Name:lower():find("boss") then
-                if d < dist then
-                    boss = v
-                    dist = d
-                end
-            elseif not boss then
-                if d < dist then
-                    normal = v
-                    dist = d
-                end
+--// TARGET (ƯU TIÊN BOSS)
+function GetTarget(hrp)
+    local boss, normal = nil, nil
+    local dist = math.huge
+
+    for _,v in pairs(GetMobs()) do
+        local d = (hrp.Position - v.HumanoidRootPart.Position).Magnitude
+
+        if v.Name:lower():find("boss") then
+            if d < dist then
+                boss = v
+                dist = d
+            end
+        elseif not boss then
+            if d < dist then
+                normal = v
+                dist = d
             end
         end
     end
@@ -47,72 +61,106 @@ function GetTarget()
     return boss or normal
 end
 
---// MOVE (FAST + SMOOTH)
-function MoveTo(cf)
-    local dist = (hrp.Position - cf.Position).Magnitude
-    local t = math.clamp(dist/getgenv().Speed,0.05,0.5)
-
-    local tween = TweenService:Create(hrp, TweenInfo.new(t), {CFrame = cf})
-    tween:Play()
-    task.wait(t)
+--// MOVE (LEGIT)
+function MoveTo(hrp, pos)
+    local dir = (pos - hrp.Position).Unit
+    hrp.Velocity = dir * Setting.Speed
 end
 
---// LOOK LOCK
-function LookAt(pos)
+--// LOOK
+function LookAt(hrp, pos)
     hrp.CFrame = CFrame.new(hrp.Position, pos)
 end
 
---// EQUIP FAST
+--// EQUIP
 function Equip(name)
+    local char = GetChar()
     local tool = plr.Backpack:FindFirstChild(name) or char:FindFirstChild(name)
     if tool then
         char.Humanoid:EquipTool(tool)
-    end
-end
-
---// FAST CLICK
-function ClickFast()
-    for i=1,2 do
-        Vim:SendMouseButtonEvent(0,0,0,true,game,0)
-        Vim:SendMouseButtonEvent(0,0,0,false,game,0)
-    end
-end
-
---// FAST SKILL (không delay thừa)
-function UseSkills()
-    for _,k in pairs({"Z","X","C","V"}) do
-        Vim:SendKeyEvent(true,k,false,game)
         task.wait(0.1)
-        Vim:SendKeyEvent(false,k,false,game)
     end
 end
 
---// MAIN
+--// CLICK (M1)
+function Click()
+    Vim:SendMouseButtonEvent(0,0,0,true,game,0)
+    Vim:SendMouseButtonEvent(0,0,0,false,game,0)
+end
+
+--// SKILL
+function Skill(key)
+    Vim:SendKeyEvent(true,key,false,game)
+    task.wait(0.12)
+    Vim:SendKeyEvent(false,key,false,game)
+end
+
+--// COMBO
+function DoCombo(mob)
+    local hrp = GetChar():WaitForChild("HumanoidRootPart")
+    local mobHRP = mob.HumanoidRootPart
+
+    LookAt(hrp, mobHRP.Position)
+
+    -- M1 mở đầu
+    for i=1,2 do
+        Click()
+        task.wait(0.1)
+    end
+
+    -- skill gần
+    if (hrp.Position - mobHRP.Position).Magnitude < 6 then
+        for _,k in pairs({"Z","X","C","V"}) do
+            Skill(k)
+        end
+    end
+end
+
+--// CHECK WAVE
+function WaveActive()
+    return #GetMobs() > 0
+end
+
+--// MAIN AI
 spawn(function()
-    while getgenv().Farm do
+    while Setting.Farm do
         pcall(function()
 
-            local mob = GetTarget()
-            if mob then
-                local mobHRP = mob.HumanoidRootPart
+            local char = GetChar()
+            local hrp = char:WaitForChild("HumanoidRootPart")
 
-                -- vị trí tối ưu (không quá xa)
-                local target = mobHRP.CFrame * CFrame.new(0,0,getgenv().Distance)
-                MoveTo(target)
+            if WaveActive() then
+                -- 🟢 FARM WAVE
+                local mob = GetTarget(hrp)
+                if mob then
+                    local mobHRP = mob.HumanoidRootPart
 
-                -- lock aim
-                LookAt(mobHRP.Position)
+                    local targetPos = mobHRP.Position + Vector3.new(0,0,Setting.Distance)
 
-                -- combo nhanh
-                for _,wp in pairs(getgenv().Weapons) do
-                    Equip(wp)
+                    MoveTo(hrp, targetPos)
+                    LookAt(hrp, mobHRP.Position)
 
-                    ClickFast()
-                    UseSkills()
+                    for _,wp in pairs(Setting.Weapons) do
+                        Equip(wp)
+                        DoCombo(mob)
+                    end
+                end
+
+            else
+                -- 🔴 HẾT WAVE → ĐỨNG CHỜ
+                hrp.Velocity = Vector3.zero
+                task.wait(Setting.ScanDelay)
+
+                -- phát hiện wave mới → lao tới ngay
+                if WaveActive() then
+                    local mob = GetTarget(hrp)
+                    if mob then
+                        MoveTo(hrp, mob.HumanoidRootPart.Position)
+                    end
                 end
             end
 
         end)
-        task.wait(0.05)
+        task.wait(0.1)
     end
 end)
