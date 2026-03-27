@@ -1,4 +1,4 @@
---// REQUEST FIX (QUAN TRỌNG)
+--// REQUEST FIX
 local request = request or http_request or syn and syn.request or fluxus and fluxus.request
 
 --// SERVICES
@@ -6,8 +6,14 @@ local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local Lighting = game:GetService("Lighting")
 
---// WEBHOOK
-local webhook = "https://discord.com/api/webhooks/1486382838256373800/t0dDpQd-NWa0obYARcM7F1DNy6bwAiljC4bf2J9Q0GvxEVOoMZepabIcXUXwuACeBOkW"
+--// WEBHOOK (MỚI)
+local webhook = "https://discord.com/api/webhooks/1487094092461768726/e6VF83RjvlXm_RdXjodRrKMbG1i1CdRCl2lb5cW8raSYZhdFEpAn7uAnVGkuBeP7wHvu"
+
+--// CHECK REQUEST
+if not request then
+    warn("❌ Executor không hỗ trợ HTTP")
+    return
+end
 
 --// ANTI DUP
 local sent = {}
@@ -26,14 +32,16 @@ local function isFullMoon()
     return t >= 0 and t <= 1
 end
 
--- 🔍 BOSS (SIÊU NHẸ - KHÔNG LỖI)
+-- 🔍 BOSS (FIX CHUẨN)
 local function getBoss()
     for _, v in pairs(workspace:GetDescendants()) do
-        if v.Name == "Dough King"
-        or v.Name == "Cake Prince"
-        or v.Name == "Cursed Captain"
-        or v.Name == "Cake Queen"
-        or v.Name == "rip_indra True Form" then
+        local name = string.lower(v.Name)
+
+        if name:find("dough king")
+        or name:find("cake prince")
+        or name:find("cursed captain")
+        or name:find("cake queen")
+        or name:find("indra") then
             return v.Name
         end
     end
@@ -42,14 +50,16 @@ end
 -- 🔍 ISLAND
 local function getIsland()
     for _, v in pairs(workspace:GetDescendants()) do
-        if v.Name == "Mirage Island"
-        or v.Name == "Prehistoric Island" then
+        local name = string.lower(v.Name)
+
+        if name:find("mirage")
+        or name:find("prehistoric") then
             return v.Name
         end
     end
 end
 
--- 🚀 STREAM NHẸ (KHÔNG LAG)
+-- 🚀 STREAM NHẸ
 local function stream()
     local plr = Players.LocalPlayer
 
@@ -70,8 +80,10 @@ local function send(title, name)
 
     local sea = getSea()
 
+    print("📡 SEND:", title, name)
+
     local data = {
-        ["username"] = "Fix Scanner ⚡",
+        ["username"] = "Kaibeo Scanner ⚡",
         ["embeds"] = {{
             ["title"] = title.." ["..sea.."]",
             ["color"] = 65280,
@@ -79,7 +91,12 @@ local function send(title, name)
             ["description"] =
                 "**Name:**\n```"..(name or "N/A").."```\n\n" ..
                 "**Players:**\n```"..#Players:GetPlayers().."/12```\n\n" ..
+                "**Sea:**\n```"..sea.."```\n\n" ..
                 "**JobId:**\n```"..game.JobId.."```",
+
+            ["footer"] = {
+                ["text"] = "Fix All Scanner"
+            },
 
             ["timestamp"] = DateTime.now():ToIsoDate()
         }}
@@ -93,7 +110,17 @@ local function send(title, name)
     })
 end
 
--- ⏳ LOAD CHẮC CHẮN
+-- 🧪 TEST WEBHOOK
+request({
+    Url = webhook,
+    Method = "POST",
+    Headers = {["Content-Type"] = "application/json"},
+    Body = HttpService:JSONEncode({
+        content = "✅ SCANNER STARTED"
+    })
+})
+
+-- ⏳ LOAD
 print("⏳ Loading map...")
 task.wait(30)
 
@@ -103,15 +130,14 @@ while true do
 
     local sea = getSea()
 
-    -- ❌ BỎ SEA 1
     if sea ~= "Sea 1" then
-
-        -- load map nhẹ
         stream()
 
         local boss = getBoss()
         local island = getIsland()
         local full = isFullMoon()
+
+        print("DEBUG:", boss, island, full)
 
         -- 🌕
         if full and sea == "Sea 3" then
@@ -125,7 +151,9 @@ while true do
         elseif island then
             send("🏝️ ISLAND", island)
         end
+    else
+        print("❌ Skip Sea 1")
     end
 
-    task.wait(120) -- 2 phút
+    task.wait(120)
 end
