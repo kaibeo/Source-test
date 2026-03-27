@@ -3,6 +3,7 @@ repeat task.wait() until game:IsLoaded()
 repeat task.wait() until game.Players.LocalPlayer.Character
 repeat task.wait() until game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 
+-- SERVICES
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local VirtualUser = game:GetService("VirtualUser")
@@ -25,33 +26,41 @@ local Speed = 150
 local Height = 5
 local HitboxSize = 10
 
--- LEVEL FIX (đa hệ)
+-- 🔥 GET LEVEL (FIX CHUẨN)
 function GetLevel()
-    local data = LocalPlayer:FindFirstChild("Data")
-    if data and data:FindFirstChild("Level") then
-        return data.Level.Value
-    end
-    
     local ls = LocalPlayer:FindFirstChild("leaderstats")
     if ls then
         for _,v in pairs(ls:GetChildren()) do
-            if v.Name:lower():find("level") then
+            if string.lower(v.Name):find("level") then
                 return v.Value
             end
         end
     end
-    
+
+    for _,v in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
+        if v:IsA("TextLabel") and v.Text:find("Cấp") then
+            local num = tonumber(v.Text:match("%d+"))
+            if num then return num end
+        end
+    end
+
     return 1
 end
 
--- CONFIG SELECT
+-- 🔥 CHỌN MAP
 function GetConfig()
     local lv = GetLevel()
-    for _,v in pairs(Config) do
+
+    table.sort(Config,function(a,b)
+        return a.Max < b.Max
+    end)
+
+    for _,v in ipairs(Config) do
         if lv <= v.Max then
             return v
         end
     end
+
     return Config[#Config]
 end
 
@@ -59,7 +68,7 @@ end
 function FlyTo(cf)
     local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
-    
+
     local dist = (hrp.Position - cf.Position).Magnitude
     local tween = TweenService:Create(hrp, TweenInfo.new(dist/Speed), {CFrame = cf})
     tween:Play()
@@ -78,15 +87,16 @@ function Hitbox()
     end
 end
 
--- TÌM QUÁI (chuẩn hơn)
+-- TÌM QUÁI GẦN NHẤT
 function GetMob(name)
-    local closest = nil
-    local dist = math.huge
-    
+    local closest, dist = nil, math.huge
+
     for _,v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Model") and v.Name == name and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
+        if v:IsA("Model") and v.Name == name 
+        and v:FindFirstChild("Humanoid") 
+        and v:FindFirstChild("HumanoidRootPart") then
+            
             if v.Humanoid.Health > 0 then
-                
                 local d = (LocalPlayer.Character.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
                 
                 if d < dist then
@@ -96,54 +106,37 @@ function GetMob(name)
             end
         end
     end
-    
+
     return closest
 end
 
--- CHECK QUEST UI
+-- CHECK QUEST
 function HasQuest()
     return LocalPlayer.PlayerGui:FindFirstChild("Quest")
 end
 
--- NHẤN E (CHỈ GẦN NPC)
-function TryGetQuest(npcPos)
-    local hrp = LocalPlayer.Character.HumanoidRootPart
-    local dist = (hrp.Position - npcPos).Magnitude
-    
-    if dist < 10 then
-        VirtualInputManager:SendKeyEvent(true,"E",false,game)
-        task.wait(0.1)
-        VirtualInputManager:SendKeyEvent(false,"E",false,game)
+-- NHẬN QUEST (KHÔNG SPAM)
+function GetQuest(cfg)
+    FlyTo(CFrame.new(cfg.NPC))
+    task.wait(1)
+
+    VirtualInputManager:SendKeyEvent(true,"E",false,game)
+    task.wait(0.1)
+    VirtualInputManager:SendKeyEvent(false,"E",false,game)
+end
+
+-- AUTO CHIẾN ĐẤU
+function EnableCombat()
+    for _,v in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
+        if v:IsA("TextButton") and v.Text == "Chiến đấu" then
+            pcall(function()
+                firesignal(v.MouseButton1Click)
+            end)
+        end
     end
 end
 
--- MAIN
-spawn(function()
-    while task.wait() do
-        
-        local cfg = GetConfig()
-        Hitbox()
-        
-        if not HasQuest() then
-            FlyTo(CFrame.new(cfg.NPC))
-            task.wait(1)
-            TryGetQuest(cfg.NPC) -- ✅ không spam nữa
-        else
-            local mob = GetMob(cfg.Mob)
-            
-            if mob then
-                repeat task.wait()
-                    
-                    local pos = mob.HumanoidRootPart.Position
-                    local cf = CFrame.new(pos + Vector3.new(0,Height,0), pos)
-                    
-                    FlyTo(cf)
-                    
-                    VirtualUser:Button1Down(Vector2.new(0,0))
-                    VirtualUser:Button1Up(Vector2.new(0,0))
-                    
-                until not mob or mob.Humanoid.Health <= 0
-            end
-        end
-    end
-end)
+-- THOÁT SAFE ZONE
+function LeaveSafe()
+    local hrp = LocalPlayer.Character.HumanoidRootPart
+    hrp.CFrame = hrp.CFrame + Vector3.new(0,0
