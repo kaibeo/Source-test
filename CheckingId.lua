@@ -1,6 +1,7 @@
 --// SERVICES
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
 local Lighting = game:GetService("Lighting")
 
 --// WEBHOOKS
@@ -47,28 +48,19 @@ local function isFullMoon()
     return t >= 0 and t <= 1 and Lighting.Brightness <= 2
 end
 
--- 🚀 ULTRA STREAM
+-- 🚀 ULTRA STREAM (ĐỨNG YÊN VẪN QUÉT)
 local function ultraStream()
     local plr = Players.LocalPlayer
-    local char = plr.Character
-    if not char then return end
 
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-
-    local radius = 50000
-    local step = 6000
-
-    for x = -radius, radius, step do
-        for z = -radius, radius, step do
-            local pos = root.Position + Vector3.new(x, 0, z)
-
-            pcall(function()
-                plr:RequestStreamAroundAsync(pos)
-            end)
-
-            task.wait(0.01)
+    for i = 1, 2 do
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") then
+                pcall(function()
+                    plr:RequestStreamAroundAsync(v.Position)
+                end)
+            end
         end
+        task.wait(0.5)
     end
 end
 
@@ -78,10 +70,7 @@ local function hasBoss()
         if v:IsA("Model") and v:FindFirstChild("Humanoid") then
             for _, b in pairs(bosses) do
                 if string.lower(v.Name) == string.lower(b) then
-                    local hrp = v:FindFirstChild("HumanoidRootPart")
-                    if hrp and hrp.Position.Magnitude > 1000 then
-                        return true, b
-                    end
+                    return true, b
                 end
             end
         end
@@ -96,10 +85,8 @@ local function hasIsland()
             for _, i in pairs(islands) do
                 if string.lower(v.Name) == string.lower(i) then
                     local part = v:FindFirstChildWhichIsA("BasePart")
-                    if part then
-                        if part.Position.Magnitude > 3000 and part.Size.Magnitude > 80 then
-                            return true, i
-                        end
+                    if part and part.Position.Magnitude > 3000 then
+                        return true, i
                     end
                 end
             end
@@ -117,62 +104,62 @@ local function send(eventType, name)
     local webhook = webhooks[eventType]
     if not webhook then return end
 
-    local sea = getSea()
-
-    local data = {
-        ["username"] = "Scanner Ultra ⚡",
-        ["embeds"] = {{
-            ["title"] = eventType.." ["..sea.."]",
-
-            ["description"] =
-                "**Name:**\n```"..(name or "N/A").."```\n\n" ..
-                "**Players:**\n```"..#Players:GetPlayers().."/12```\n\n" ..
-                "**Sea:**\n```"..sea.."```\n\n" ..
-                "**JobId:**\n```"..game.JobId.."```\n\n" ..
-                "**Join:**\n```lua\n" ..
-                "game:GetService(\"ReplicatedStorage\").__ServerBrowser:InvokeServer(\"teleport\", \""..game.JobId.."\")\n```",
-
-            ["timestamp"] = DateTime.now():ToIsoDate()
-        }}
-    }
-
     request({
         Url = webhook,
         Method = "POST",
         Headers = {["Content-Type"] = "application/json"},
-        Body = HttpService:JSONEncode(data)
+        Body = HttpService:JSONEncode({
+            content = eventType.." | "..(name or "").." | "..game.JobId
+        })
     })
 end
 
--- ⏳ LOAD MAP
-task.wait(math.random(30,60))
+-- 🔁 SERVER HOP
+local function serverHop()
+    local placeId = game.PlaceId
+    local url = "https://games.roblox.com/v1/games/"..placeId.."/servers/Public?limit=100"
 
--- 🔁 LOOP
+    local data = HttpService:JSONDecode(game:HttpGet(url))
+
+    for _, v in pairs(data.data) do
+        if v.playing < v.maxPlayers then
+            TeleportService:TeleportToPlaceInstance(placeId, v.id)
+            task.wait(2)
+        end
+    end
+end
+
+-- 🔁 MAIN LOOP
 while true do
     local sea = getSea()
 
-    -- ❌ BỎ SEA 1
+    -- ❌ bỏ Sea 1
     if sea == "Sea 1" then
-        task.wait(120)
+        serverHop()
+        task.wait(5)
         continue
     end
 
+    -- ⏳ LOAD MAP
+    task.wait(math.random(30,60))
+
     ultraStream()
 
+    local found = false
     local full = isFullMoon()
     local boss, bossName = hasBoss()
     local island, islandName = hasIsland()
 
-    -- 🌕 FULL MOON
+    -- 🌕
     if full and sea == "Sea 3" then
         send("moon")
+        found = true
 
-    -- 👹 BOSS
+    -- 👹
     elseif boss then
         local name = string.lower(bossName)
 
         if not (sea == "Sea 2" and name:find("indra")) then
-
             if name:find("dough king") then
                 send("doughKing", bossName)
 
@@ -188,19 +175,27 @@ while true do
             elseif name:find("cursed captain") then
                 send("cursed", bossName)
             end
+
+            found = true
         end
 
-    -- 🏝️ ISLAND
+    -- 🏝️
     elseif island then
         local name = string.lower(islandName)
 
         if name:find("mirage") then
             send("mirage", islandName)
-
         elseif name:find("prehistoric") then
             send("prehistoric", islandName)
         end
+
+        found = true
     end
 
-    task.wait(120)
+    -- ❌ không có → hop
+    if not found then
+        serverHop()
+    end
+
+    task.wait(5)
 end
