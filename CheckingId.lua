@@ -1,22 +1,10 @@
 --// SERVICES
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
-local TeleportService = game:GetService("TeleportService")
 local Lighting = game:GetService("Lighting")
 
---// WEBHOOKS
-local webhooks = {
-    moon = "https://discord.com/api/webhooks/1486382838256373800/t0dDpQd-NWa0obYARcM7F1DNy6bwAiljC4bf2J9Q0GvxEVOoMZepabIcXUXwuACeBOkW",
-
-    doughKing = "https://discord.com/api/webhooks/1487094092461768726/e6VF83RjvlXm_RdXjodRrKMbG1i1CdRCl2lb5cW8raSYZhdFEpAn7uAnVGkuBeP7wHvu",
-    indra = "https://discord.com/api/webhooks/1487094092461768726/e6VF83RjvlXm_RdXjodRrKMbG1i1CdRCl2lb5cW8raSYZhdFEpAn7uAnVGkuBeP7wHvu",
-    cakeQueen = "https://discord.com/api/webhooks/1487094092461768726/e6VF83RjvlXm_RdXjodRrKMbG1i1CdRCl2lb5cW8raSYZhdFEpAn7uAnVGkuBeP7wHvu",
-    cakePrince = "https://discord.com/api/webhooks/1487094092461768726/e6VF83RjvlXm_RdXjodRrKMbG1i1CdRCl2lb5cW8raSYZhdFEpAn7uAnVGkuBeP7wHvu",
-    cursed = "https://discord.com/api/webhooks/1487094092461768726/e6VF83RjvlXm_RdXjodRrKMbG1i1CdRCl2lb5cW8raSYZhdFEpAn7uAnVGkuBeP7wHvu",
-
-    mirage = "https://discord.com/api/webhooks/1486382849622802634/DqPjA6RaQy2z4Wxw_tLsddltYB0dJgG4A_zx36LGqRax8pq8yakmE4DQAcfv6Mhb5Dv2",
-    prehistoric = "https://discord.com/api/webhooks/1487094080646418522/uLAiVJFOxWqs7D0ad1or2Por13heNzT2gB9XvvMUyBUZTO-ErxfdDSpMbxeb8VLAYbV3"
-}
+--// WEBHOOK (CỦA BẠN)
+local webhook = "https://discord.com/api/webhooks/1486382838256373800/t0dDpQd-NWa0obYARcM7F1DNy6bwAiljC4bf2J9Q0GvxEVOoMZepabIcXUXwuACeBOkW"
 
 --// DATA
 local bosses = {
@@ -48,11 +36,10 @@ local function isFullMoon()
     return t >= 0 and t <= 1 and Lighting.Brightness <= 2
 end
 
--- 🚀 ULTRA STREAM (ĐỨNG YÊN VẪN QUÉT)
+-- 🚀 STREAM XA
 local function ultraStream()
     local plr = Players.LocalPlayer
-
-    for i = 1, 2 do
+    for i = 1,2 do
         for _, v in pairs(workspace:GetDescendants()) do
             if v:IsA("BasePart") then
                 pcall(function()
@@ -95,107 +82,97 @@ local function hasIsland()
     return false
 end
 
--- 📤 SEND
-local function send(eventType, name)
-    local key = eventType .. (name or "")
+-- 📤 EMBED
+local function sendEmbed(title, name, color)
+    local key = title .. (name or "")
     if sentEvents[key] then return end
     sentEvents[key] = true
 
-    local webhook = webhooks[eventType]
-    if not webhook then return end
+    local sea = getSea()
+
+    local data = {
+        ["username"] = "Scanner Pro ⚡",
+        ["embeds"] = {{
+            ["title"] = title .. " ["..sea.."]",
+            ["color"] = color,
+
+            ["description"] =
+                "**Name:**\n```"..(name or "N/A").."```\n\n" ..
+                "**Players:**\n```"..#Players:GetPlayers().."/12```\n\n" ..
+                "**Sea:**\n```"..sea.."```\n\n" ..
+                "**JobId:**\n```"..game.JobId.."```\n\n" ..
+                "**Join Script:**\n```lua\n" ..
+                "game:GetService(\"ReplicatedStorage\").__ServerBrowser:InvokeServer(\"teleport\", \""..game.JobId.."\")\n```",
+
+            ["footer"] = {
+                ["text"] = "Kaibeo Scanner"
+            },
+
+            ["timestamp"] = DateTime.now():ToIsoDate()
+        }}
+    }
 
     request({
         Url = webhook,
         Method = "POST",
         Headers = {["Content-Type"] = "application/json"},
-        Body = HttpService:JSONEncode({
-            content = eventType.." | "..(name or "").." | "..game.JobId
-        })
+        Body = HttpService:JSONEncode(data)
     })
 end
 
--- 🔁 SERVER HOP
-local function serverHop()
-    local placeId = game.PlaceId
-    local url = "https://games.roblox.com/v1/games/"..placeId.."/servers/Public?limit=100"
+-- ⏳ LOAD
+task.wait(math.random(30,60))
 
-    local data = HttpService:JSONDecode(game:HttpGet(url))
-
-    for _, v in pairs(data.data) do
-        if v.playing < v.maxPlayers then
-            TeleportService:TeleportToPlaceInstance(placeId, v.id)
-            task.wait(2)
-        end
-    end
-end
-
--- 🔁 MAIN LOOP
+-- 🔁 LOOP
 while true do
     local sea = getSea()
 
-    -- ❌ bỏ Sea 1
-    if sea == "Sea 1" then
-        serverHop()
-        task.wait(5)
-        continue
-    end
+    if sea ~= "Sea 1" then
+        ultraStream()
 
-    -- ⏳ LOAD MAP
-    task.wait(math.random(30,60))
+        local full = isFullMoon()
+        local boss, bossName = hasBoss()
+        local island, islandName = hasIsland()
 
-    ultraStream()
+        -- 🌕
+        if full and sea == "Sea 3" then
+            sendEmbed("🌕 FULL MOON", nil, 65280)
 
-    local found = false
-    local full = isFullMoon()
-    local boss, bossName = hasBoss()
-    local island, islandName = hasIsland()
+        -- 👹
+        elseif boss then
+            local name = string.lower(bossName)
 
-    -- 🌕
-    if full and sea == "Sea 3" then
-        send("moon")
-        found = true
+            if not (sea == "Sea 2" and name:find("indra")) then
 
-    -- 👹
-    elseif boss then
-        local name = string.lower(bossName)
+                if name:find("dough king") then
+                    sendEmbed("🍩 DOUGH KING", bossName, 16753920)
 
-        if not (sea == "Sea 2" and name:find("indra")) then
-            if name:find("dough king") then
-                send("doughKing", bossName)
+                elseif name:find("indra") then
+                    sendEmbed("👑 RIP INDRA", bossName, 16711680)
 
-            elseif name:find("indra") then
-                send("indra", bossName)
+                elseif name:find("cake queen") then
+                    sendEmbed("🎂 CAKE QUEEN", bossName, 16711935)
 
-            elseif name:find("cake queen") then
-                send("cakeQueen", bossName)
+                elseif name:find("cake prince") then
+                    sendEmbed("🍰 CAKE PRINCE", bossName, 8388736)
 
-            elseif name:find("cake prince") then
-                send("cakePrince", bossName)
-
-            elseif name:find("cursed captain") then
-                send("cursed", bossName)
+                elseif name:find("cursed captain") then
+                    sendEmbed("☠️ CURSED CAPTAIN", bossName, 10038562)
+                end
             end
 
-            found = true
+        -- 🏝️
+        elseif island then
+            local name = string.lower(islandName)
+
+            if name:find("mirage") then
+                sendEmbed("🌴 MIRAGE ISLAND", islandName, 3447003)
+
+            elseif name:find("prehistoric") then
+                sendEmbed("🦴 PREHISTORIC ISLAND", islandName, 10181046)
+            end
         end
-
-    -- 🏝️
-    elseif island then
-        local name = string.lower(islandName)
-
-        if name:find("mirage") then
-            send("mirage", islandName)
-        elseif name:find("prehistoric") then
-            send("prehistoric", islandName)
-        end
-
-        found = true
     end
 
-    -- ❌ không có → hop
-    if not found then
-        serverHop()
-    end
-
-    task.wait(5)
+    task.wait(120)
 end
