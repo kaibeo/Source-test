@@ -1,6 +1,4 @@
--- // KING LEGACY DUNGEON FARM - FARM 1 CON XONG DỪNG + NHÌN XUỐNG ĐẤT
--- UPDATE: Chỉ farm 1 con đỏ → dừng, nhìn thẳng xuống đất (không nhìn lên)
--- Paste vào Executor → Execute là farm luôn!
+-- // KING LEGACY AUTO DUNGEON FARM FULL FIX
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -15,9 +13,8 @@ local root = character:WaitForChild("HumanoidRootPart")
 local farming = false
 local currentTarget = nil
 local heartbeatConn = nil
-local hasFarmedOne = false
 
--- ================== KIỂM TRA MÀU XANH LÁ (KHÔNG FARM) ==================
+-- ================== CHECK GREEN ==================
 local function hasGreenMark(mob)
     local head = mob:FindFirstChild("Head")
     if not head then return false end
@@ -26,7 +23,7 @@ local function hasGreenMark(mob)
             for _, child in ipairs(gui:GetDescendants()) do
                 if child:IsA("ImageLabel") or child:IsA("Frame") then
                     local color = child.ImageColor3 or child.BackgroundColor3
-                    if color and color.G > 0.75 and color.R < 0.25 and color.B < 0.25 then
+                    if color and color.G > 0.75 and color.R < 0.25 then
                         return true
                     end
                 end
@@ -36,8 +33,8 @@ local function hasGreenMark(mob)
     return false
 end
 
--- ================== KIỂM TRA MÀU ĐỎ + ĐẦU LÂU ĐỎ ==================
-local function hasRedMarkOrRedSkull(mob)
+-- ================== CHECK RED ==================
+local function hasRedMark(mob)
     local head = mob:FindFirstChild("Head")
     if not head then return false end
     for _, gui in ipairs(head:GetDescendants()) do
@@ -45,132 +42,126 @@ local function hasRedMarkOrRedSkull(mob)
             for _, child in ipairs(gui:GetDescendants()) do
                 if child:IsA("ImageLabel") or child:IsA("Frame") then
                     local color = child.ImageColor3 or child.BackgroundColor3
-                    if color and color.R > 0.75 and color.G < 0.25 and color.B < 0.25 then
+                    if color and color.R > 0.75 and color.G < 0.25 then
                         return true
                     end
                 end
             end
         end
     end
-
-    local nameLower = mob.Name:lower()
-    if string.find(nameLower, "firelord") or string.find(nameLower, "pirate gunner") or 
-       string.find(nameLower, "elite") or string.find(nameLower, "boss") then
-        return true
-    end
     return false
 end
 
-local function isMarkedMob(mob)
-    if not mob or not mob:FindFirstChild("Humanoid") or mob.Humanoid.Health <= 0 then
-        return false
-    end
-    if mob == character then return false end
-    if hasGreenMark(mob) then return false end
-    if hasRedMarkOrRedSkull(mob) then return true end
-    return false
+local function isMob(mob)
+    return mob
+    and mob:IsA("Model")
+    and mob:FindFirstChild("Humanoid")
+    and mob:FindFirstChild("HumanoidRootPart")
+    and mob.Humanoid.Health > 0
+    and mob ~= character
+    and not hasGreenMark(mob)
+    and hasRedMark(mob)
 end
 
-local function getClosestMarkedMob()
-    local mobs = {}
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") and isMarkedMob(obj) and obj:FindFirstChild("HumanoidRootPart") then
-            table.insert(mobs, obj)
-        end
-    end
-
-    local closest = nil
-    local shortest = math.huge
-    local myPos = root.Position
-
-    for _, mob in ipairs(mobs) do
-        local dist = (myPos - mob.HumanoidRootPart.Position).Magnitude
-        if dist < shortest then
-            shortest = dist
-            closest = mob
+-- ================== GET CLOSEST ==================
+local function getClosestMob()
+    local closest, dist = nil, math.huge
+    for _, v in ipairs(Workspace:GetDescendants()) do
+        if isMob(v) then
+            local d = (root.Position - v.HumanoidRootPart.Position).Magnitude
+            if d < dist then
+                dist = d
+                closest = v
+            end
         end
     end
     return closest
 end
 
--- Chỉ spam M1
-local function startAttackLoop()
-    spawn(function()
-        while farming do
-            if currentTarget and currentTarget:FindFirstChild("Humanoid") and currentTarget.Humanoid.Health > 0 then
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-                task.wait(0.05)
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-            end
-            task.wait(0.18)
-        end
-    end)
+-- ================== AUTO CLICK ==================
+local function attack()
+    VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,1)
+    task.wait()
+    VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
 end
 
-local function startFarming()
-    if farming or hasFarmedOne then return end
-    farming = true
-    currentTarget = nil
-    hasFarmedOne = false
+-- ================== AUTO SKILL ==================
+local function useSkills()
+    local keys = {"Z","X","C","V"}
+    for _, key in ipairs(keys) do
+        VirtualInputManager:SendKeyEvent(true, key, false, game)
+        task.wait(0.05)
+        VirtualInputManager:SendKeyEvent(false, key, false, game)
+        task.wait(0.2)
+    end
+end
 
-    startAttackLoop()
+-- ================== FARM ==================
+local function startFarm()
+    if farming then return end
+    farming = true
+
+    -- spam M1
+    spawn(function()
+        while farming do
+            if currentTarget then
+                attack()
+            end
+            task.wait(0.15)
+        end
+    end)
+
+    -- spam skill
+    spawn(function()
+        while farming do
+            if currentTarget then
+                useSkills()
+            end
+            task.wait(1)
+        end
+    end)
 
     heartbeatConn = RunService.Heartbeat:Connect(function()
         if not farming then return end
-        if hasFarmedOne then
-            stopFarming()
-            return
+
+        -- nếu target chết → tìm con khác
+        if not currentTarget 
+        or not currentTarget:FindFirstChild("Humanoid") 
+        or currentTarget.Humanoid.Health <= 0 then
+            currentTarget = getClosestMob()
         end
 
-        local target = getClosestMarkedMob()
-        if target and target:FindFirstChild("HumanoidRootPart") then
-            currentTarget = target
-            local hrp = target.HumanoidRootPart
+        if currentTarget and currentTarget:FindFirstChild("HumanoidRootPart") then
+            local hrp = currentTarget.HumanoidRootPart
 
-            -- BAY SÁT ĐẦU +5
-            local aboveHead = hrp.Position + Vector3.new(0, hrp.Size.Y + 5, 0)
+            -- bay lên đầu
+            local pos = hrp.Position + Vector3.new(0, hrp.Size.Y + 5, 0)
 
-            -- SỬA: NHÌN THẲNG XUỐNG ĐẤT (nhìn thẳng vào quái bên dưới)
-            root.CFrame = CFrame.new(aboveHead, hrp.Position)
-
-            -- Nếu quái chết → farm xong 1 con, dừng
-            if target.Humanoid.Health <= 0 then
-                hasFarmedOne = true
-            end
-        else
-            currentTarget = nil
+            -- nhìn xuống
+            root.CFrame = CFrame.new(pos, hrp.Position)
         end
     end)
 
-    print("✅ FARM 1 CON ĐÃ BẬT!")
-    print("   • Farm 1 con đỏ xong → dừng hẳn (dù còn quái)")
-    print("   • Bay sát đầu + nhìn thẳng xuống đất")
-    print("   • Chỉ spam M1")
+    print("✅ AUTO FARM ALL + SKILL ON")
 end
 
-local function stopFarming()
+local function stopFarm()
     farming = false
     if heartbeatConn then heartbeatConn:Disconnect() end
     currentTarget = nil
-    print("⛔ Farm đã dừng!")
+    print("⛔ STOP FARM")
 end
 
--- Toggle F (bật lại để farm con tiếp theo)
-UserInputService.InputBegan:Connect(function(input, gp)
+-- TOGGLE F
+UserInputService.InputBegan:Connect(function(i,gp)
     if gp then return end
-    if input.KeyCode == Enum.KeyCode.F then
+    if i.KeyCode == Enum.KeyCode.F then
         if farming then
-            stopFarming()
+            stopFarm()
         else
-            hasFarmedOne = false
-            startFarming()
+            startFarm()
         end
     end
 end)
 
--- TỰ ĐỘNG FARM NGAY KHI EXECUTE
-print("🚀 SCRIPT FARM 1 CON ĐÃ LOAD!")
-print("Đang tự động farm 1 con đỏ ngay bây giờ...")
-startFarming()
-
-print("Nhấn **F** để TẮT / BẬT farm con tiếp theo")
+startFarm()
