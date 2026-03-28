@@ -1,46 +1,23 @@
--- AUTO FARM DUNGEON THEO TẦNG (Wave)
+--// KING LEGACY AUTO FARM DUNGEON FULL VIP
 
 local player = game.Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
 local HRP = char:WaitForChild("HumanoidRootPart")
+local humanoid = char:WaitForChild("Humanoid")
 
 -- SETTINGS
-local HEIGHT = 10
-local DISTANCE = 2000
+local HEIGHT = 12
+local DISTANCE = 2500
+local ATTACK_DELAY = 0.05
 
--- Lấy quái gần nhất
-function GetNearestMob()
-    local nearest = nil
-    local minDist = math.huge
+-- SERVICES
+local VirtualUser = game:GetService("VirtualUser")
+local RunService = game:GetService("RunService")
 
-    for _, v in pairs(workspace.Enemies:GetChildren()) do
-        if v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
-            if v.Humanoid.Health > 0 then
-                local dist = (HRP.Position - v.HumanoidRootPart.Position).Magnitude
-                if dist < minDist and dist <= DISTANCE then
-                    minDist = dist
-                    nearest = v
-                end
-            end
-        end
-    end
+-- ANTI FALL
+humanoid:ChangeState(11)
 
-    return nearest
-end
-
--- Check còn quái không (để biết hết tầng)
-function HasMob()
-    for _, v in pairs(workspace.Enemies:GetChildren()) do
-        if v:FindFirstChild("Humanoid") then
-            if v.Humanoid.Health > 0 then
-                return true
-            end
-        end
-    end
-    return false
-end
-
--- Equip weapon
+-- EQUIP WEAPON
 function EquipWeapon()
     for _, v in pairs(player.Backpack:GetChildren()) do
         if v:IsA("Tool") then
@@ -49,22 +26,67 @@ function EquipWeapon()
     end
 end
 
--- Attack
-function Attack()
-    pcall(function()
-        game:GetService("VirtualUser"):Button1Down(Vector2.new(0,0))
-        wait()
-        game:GetService("VirtualUser"):Button1Up(Vector2.new(0,0))
-    end)
+-- GET ALL MOBS
+function GetMobs()
+    local mobs = {}
+    for _, v in pairs(workspace.Enemies:GetChildren()) do
+        if v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
+            if v.Humanoid.Health > 0 then
+                table.insert(mobs, v)
+            end
+        end
+    end
+    return mobs
 end
 
--- MAIN LOOP
+-- ƯU TIÊN BOSS
+function GetTarget()
+    local mobs = GetMobs()
+    local nearest = nil
+    local minDist = math.huge
+
+    for _, v in pairs(mobs) do
+        local dist = (HRP.Position - v.HumanoidRootPart.Position).Magnitude
+        
+        -- Ưu tiên boss (máu cao)
+        if v.Humanoid.MaxHealth > 5000 then
+            return v
+        end
+
+        if dist < minDist and dist <= DISTANCE then
+            minDist = dist
+            nearest = v
+        end
+    end
+
+    return nearest
+end
+
+-- CHECK CÒN QUÁI
+function HasMob()
+    return #GetMobs() > 0
+end
+
+-- ATTACK
+function Attack()
+    VirtualUser:Button1Down(Vector2.new(0,0))
+    task.wait(ATTACK_DELAY)
+    VirtualUser:Button1Up(Vector2.new(0,0))
+end
+
+-- FAST ATTACK (song song)
+RunService.RenderStepped:Connect(function()
+    pcall(function()
+        Attack()
+    end)
+end)
+
+-- AUTO FARM LOOP
 while task.wait() do
     pcall(function()
 
-        -- 🔥 Nếu có quái → farm
         if HasMob() then
-            local mob = GetNearestMob()
+            local mob = GetTarget()
 
             if mob then
                 repeat
@@ -74,13 +96,11 @@ while task.wait() do
 
                     local mobHRP = mob.HumanoidRootPart
 
-                    -- bay lên đầu + khóa mặt
+                    -- 🔥 BAY + LOCK MẶT
                     HRP.CFrame = CFrame.new(
                         mobHRP.Position + Vector3.new(0, HEIGHT, 0),
                         mobHRP.Position
                     )
-
-                    Attack()
 
                 until not mob
                     or not mob:FindFirstChild("Humanoid")
@@ -88,10 +108,8 @@ while task.wait() do
             end
 
         else
-            -- 💤 Hết tầng → chờ spawn
-            repeat
-                task.wait(1)
-            until HasMob()
+            -- 💤 HẾT TẦNG → CHỜ WAVE MỚI
+            repeat task.wait(1) until HasMob()
         end
 
     end)
