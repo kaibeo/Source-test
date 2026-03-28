@@ -1,4 +1,4 @@
---// KING LEGACY AUTO FARM FIX FLY FULL
+--// FARM CHẤM ĐỎ (NO HITBOX - ANTI DETECT)
 
 local player = game.Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
@@ -6,43 +6,25 @@ local HRP = char:WaitForChild("HumanoidRootPart")
 local humanoid = char:WaitForChild("Humanoid")
 
 -- SERVICES
-local VirtualUser = game:GetService("VirtualUser")
 local RunService = game:GetService("RunService")
 local VIM = game:GetService("VirtualInputManager")
 
 -- SETTINGS
 getgenv().Setting = {
-    AutoFarm = true,
-    AutoSkill = true,
-    AutoHaki = true,
-    DodgeSkill = true,
-    PullMob = true,
-    FastAttack = true,
-    Height = 15,
-    Speed = 50
+    Height = 5, -- thấp để đánh trúng
+    Speed = 45
 }
-
--- ANTI AFK
-player.Idled:Connect(function()
-    VirtualUser:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-    task.wait(1)
-    VirtualUser:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-end)
 
 -- ANTI FALL
 humanoid.PlatformStand = true
 
--- FLY SYSTEM 🔥
-local BV = Instance.new("BodyVelocity")
+-- FLY
+local BV = Instance.new("BodyVelocity", HRP)
 BV.MaxForce = Vector3.new(1e9,1e9,1e9)
-BV.Velocity = Vector3.new(0,0,0)
-BV.Parent = HRP
 
-local BG = Instance.new("BodyGyro")
+local BG = Instance.new("BodyGyro", HRP)
 BG.MaxTorque = Vector3.new(1e9,1e9,1e9)
 BG.P = 1e4
-BG.CFrame = HRP.CFrame
-BG.Parent = HRP
 
 -- EQUIP
 function EquipWeapon()
@@ -53,140 +35,71 @@ function EquipWeapon()
     end
 end
 
--- GET MOBS
-function GetMobs()
-    local mobs = {}
+-- 🔴 CHECK CHẤM ĐỎ
+function IsRedTarget(mob)
+    if mob:FindFirstChild("Highlight") then return true end
+    if mob:FindFirstChild("Target") then return true end
+    if mob:FindFirstChild("HumanoidRootPart") then
+        for _,v in pairs(mob.HumanoidRootPart:GetChildren()) do
+            if v:IsA("BillboardGui") then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- GET MOB CHẤM ĐỎ
+function GetRedMob()
     for _,v in pairs(workspace.Enemies:GetChildren()) do
         if v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
-            table.insert(mobs,v)
-        end
-    end
-    return mobs
-end
-
--- TARGET
-function GetTarget()
-    local nearest, dist = nil, math.huge
-
-    for _,v in pairs(GetMobs()) do
-        if v:FindFirstChild("HumanoidRootPart") then
-            local d = (HRP.Position - v.HumanoidRootPart.Position).Magnitude
-
-            if v.Humanoid.MaxHealth > 5000 then
+            if IsRedTarget(v) then
                 return v
             end
-
-            if d < dist then
-                dist = d
-                nearest = v
-            end
         end
     end
-
-    return nearest
+    return nil
 end
 
--- ATTACK
+-- ATTACK (fix đánh chắc chắn)
 function Attack()
-    VirtualUser:Button1Down(Vector2.new(0,0))
-    task.wait(0.05)
-    VirtualUser:Button1Up(Vector2.new(0,0))
+    for _,v in pairs(char:GetChildren()) do
+        if v:IsA("Tool") then
+            v:Activate()
+        end
+    end
 end
 
 -- SKILL
-function UseSkill()
+function Skill()
     VIM:SendKeyEvent(true,"Z",false,game)
     VIM:SendKeyEvent(true,"X",false,game)
     VIM:SendKeyEvent(true,"C",false,game)
     VIM:SendKeyEvent(true,"V",false,game)
 end
 
--- HAKI
-function UseHaki()
-    VIM:SendKeyEvent(true,"J",false,game)
-end
+-- MAIN
+RunService.Heartbeat:Connect(function()
+    local mob = GetRedMob()
 
--- PULL MOB
-function PullMob(target)
-    for _,v in pairs(GetMobs()) do
-        if v ~= target and v:FindFirstChild("HumanoidRootPart") then
-            if (v.HumanoidRootPart.Position - target.HumanoidRootPart.Position).Magnitude < 60 then
-                v.HumanoidRootPart.CFrame = target.HumanoidRootPart.CFrame
-            end
-        end
-    end
-end
+    if mob and mob:FindFirstChild("HumanoidRootPart") then
+        EquipWeapon()
 
--- DODGE
-function Dodge(mob)
-    if (HRP.Position - mob.HumanoidRootPart.Position).Magnitude < 6 then
-        HRP.CFrame = HRP.CFrame * CFrame.new(0,25,0)
-    end
-end
+        local targetPos = mob.HumanoidRootPart.Position + Vector3.new(0,getgenv().Setting.Height,0)
 
--- FAST ATTACK
-RunService.RenderStepped:Connect(function()
-    if getgenv().Setting.FastAttack then
-        pcall(Attack)
+        -- ✈️ BAY
+        BV.Velocity = (targetPos - HRP.Position).Unit * getgenv().Setting.Speed
+
+        -- 🎯 LOCK MẶT
+        BG.CFrame = CFrame.new(HRP.Position, mob.HumanoidRootPart.Position)
+
+        -- 🧷 giữ đứng yên tránh lệch hit
+        HRP.Velocity = Vector3.new(0,0,0)
+
+        -- ⚔ ĐÁNH
+        Attack()
+
+        -- 💥 SKILL
+        Skill()
     end
 end)
-
--- AUTO SKILL LOOP
-task.spawn(function()
-    while task.wait(2) do
-        if getgenv().Setting.AutoSkill then
-            UseSkill()
-        end
-        if getgenv().Setting.AutoHaki then
-            UseHaki()
-        end
-    end
-end)
-
--- CHECK MOB
-function HasMob()
-    return #GetMobs() > 0
-end
-
--- MAIN LOOP 🔥
-while task.wait() do
-    pcall(function()
-
-        if HasMob() then
-            local mob = GetTarget()
-
-            if mob and mob:FindFirstChild("HumanoidRootPart") then
-                repeat
-                    task.wait()
-
-                    EquipWeapon()
-
-                    local targetPos = mob.HumanoidRootPart.Position + Vector3.new(0,getgenv().Setting.Height,0)
-
-                    -- ✈️ BAY THẬT
-                    BV.Velocity = (targetPos - HRP.Position).Unit * getgenv().Setting.Speed
-
-                    -- 🎯 KHÓA MẶT
-                    BG.CFrame = CFrame.new(HRP.Position, mob.HumanoidRootPart.Position)
-
-                    -- 🧲 GOM QUÁI
-                    if getgenv().Setting.PullMob then
-                        PullMob(mob)
-                    end
-
-                    -- 🛡 NÉ SKILL
-                    if getgenv().Setting.DodgeSkill then
-                        Dodge(mob)
-                    end
-
-                until not mob
-                    or not mob:FindFirstChild("Humanoid")
-                    or mob.Humanoid.Health <= 0
-            end
-
-        else
-            repeat task.wait(1) until HasMob()
-        end
-
-    end)
-end
