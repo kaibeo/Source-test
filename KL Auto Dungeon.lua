@@ -1,5 +1,6 @@
 -- // KING LEGACY DUNGEON FARM - BAY LÊN ĐẦU + MẶT XUỐNG ĐẤT + M1 + Z X C V
--- Made for you by Grok - Paste vào Executor (Fluxus, Delta, Solara, v.v.)
+-- UPDATE: TỰ ĐỘNG FARM NGAY KHI EXECUTE + CHỈ farm quái ĐỎ & ĐẦU LÂU ĐỎ
+-- Paste vào Executor (Fluxus, Delta, Solara...) và Execute là farm luôn!
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -15,26 +16,61 @@ local farming = false
 local currentTarget = nil
 local heartbeatConn = nil
 
--- ================== CHỈNH ĐIỀU KIỆN QUÁI CÓ ĐÁNH DẤU Ở ĐÂY ==================
+-- ================== KIỂM TRA MÀU XANH LÁ (KHÔNG FARM) ==================
+local function hasGreenMark(mob)
+    local head = mob:FindFirstChild("Head")
+    if not head then return false end
+
+    for _, gui in ipairs(head:GetDescendants()) do
+        if gui:IsA("BillboardGui") or gui:IsA("SurfaceGui") then
+            for _, child in ipairs(gui:GetDescendants()) do
+                if child:IsA("ImageLabel") or child:IsA("Frame") then
+                    local color = child.ImageColor3 or child.BackgroundColor3
+                    if color and color.G > 0.75 and color.R < 0.25 and color.B < 0.25 then
+                        return true
+                    end
+                end
+            end
+        end
+    end
+    return false
+end
+
+-- ================== KIỂM TRA MÀU ĐỎ + ĐẦU LÂU ĐỎ (FARM) ==================
+local function hasRedMarkOrRedSkull(mob)
+    local head = mob:FindFirstChild("Head")
+    if not head then return false end
+
+    for _, gui in ipairs(head:GetDescendants()) do
+        if gui:IsA("BillboardGui") or gui:IsA("SurfaceGui") then
+            for _, child in ipairs(gui:GetDescendants()) do
+                if child:IsA("ImageLabel") or child:IsA("Frame") then
+                    local color = child.ImageColor3 or child.BackgroundColor3
+                    if color and color.R > 0.75 and color.G < 0.25 and color.B < 0.25 then
+                        return true
+                    end
+                end
+            end
+        end
+    end
+
+    local nameLower = mob.Name:lower()
+    if string.find(nameLower, "firelord") or string.find(nameLower, "pirate gunner") or 
+       string.find(nameLower, "elite") or string.find(nameLower, "boss") then
+        return true
+    end
+    return false
+end
+
 local function isMarkedMob(mob)
     if not mob or not mob:FindFirstChild("Humanoid") or mob.Humanoid.Health <= 0 then
         return false
     end
     if mob == character then return false end
 
-    -- ================== CÁCH NHẬN BIẾT QUÁI CÓ ĐÁNH DẤU ==================
-    -- Bạn chỉnh ở đây cho phù hợp với Dungeon hiện tại:
-    -- Ví dụ 1: Có Highlight (thường quái đánh dấu sẽ có)
-    if mob:FindFirstChild("Highlight") then return true end
-    
-    -- Ví dụ 2: Tên quái chứa từ "Dungeon", "Elite", "Boss", "Marked"
-    -- if string.find(mob.Name:lower(), "dungeon") or string.find(mob.Name:lower(), "elite") or string.find(mob.Name:lower(), "marked") then return true end
-    
-    -- Ví dụ 3: Có BillboardGui trên đầu (thường là mark)
-    if mob:FindFirstChild("Head") and mob.Head:FindFirstChild("BillboardGui") then return true end
-
-    -- Mặc định: farm TẤT CẢ quái (bạn xóa 2 dòng dưới nếu muốn chỉ farm quái có mark)
-    return true
+    if hasGreenMark(mob) then return false end
+    if hasRedMarkOrRedSkull(mob) then return true end
+    return false
 end
 
 local function getClosestMarkedMob()
@@ -59,17 +95,14 @@ local function getClosestMarkedMob()
     return closest
 end
 
--- Spam M1 + Skill Z X C V
 local function startAttackLoop()
     spawn(function()
         while farming do
             if currentTarget and currentTarget:FindFirstChild("Humanoid") and currentTarget.Humanoid.Health > 0 then
-                -- M1 (vũ khí)
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)  -- nhấn trái
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
                 task.wait(0.05)
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1) -- thả
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
 
-                -- Skill trái Z X C V
                 for _, key in ipairs({"Z", "X", "C", "V"}) do
                     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
                     task.wait(0.08)
@@ -77,12 +110,11 @@ local function startAttackLoop()
                     task.wait(0.05)
                 end
             end
-            task.wait(0.25) -- tốc độ farm, chỉnh nhỏ hơn nếu muốn nhanh hơn
+            task.wait(0.25)
         end
     end)
 end
 
--- Main farm loop (Heartbeat giữ vị trí bay lên đầu + mặt xuống đất)
 local function startFarming()
     if farming then return end
     farming = true
@@ -97,38 +129,30 @@ local function startFarming()
         if target and target:FindFirstChild("HumanoidRootPart") then
             currentTarget = target
             local hrp = target.HumanoidRootPart
-
-            -- BAY LÊN ĐẦU QUÁI
             local aboveHead = hrp.Position + Vector3.new(0, hrp.Size.Y + 10, 0)
-
-            -- MẶT XUỐNG ĐẤT (rotate CFrame nhìn thẳng xuống)
             local downCFrame = CFrame.new(aboveHead) * CFrame.Angles(math.rad(90), 0, 0)
-
             root.CFrame = downCFrame
         else
             currentTarget = nil
         end
     end)
 
-    print("✅ FARM DUNGEON KING LEGACY ĐÃ BẬT!")
-    print("   • Bay lên đầu quái + mặt xuống đất")
-    print("   • Spam M1 + Skill Z X C V")
-    print("   Nhấn F để tắt/bật")
+    print("✅ FARM DUNGEON ĐÃ BẬT TỰ ĐỘNG!")
+    print("   • Bay lên đầu + mặt xuống đất")
+    print("   • Spam M1 + Z X C V")
+    print("   • Chỉ farm quái ĐỎ & ĐẦU LÂU ĐỎ")
 end
 
 local function stopFarming()
     farming = false
-    if heartbeatConn then
-        heartbeatConn:Disconnect()
-        heartbeatConn = nil
-    end
+    if heartbeatConn then heartbeatConn:Disconnect() end
     currentTarget = nil
     print("⛔ Farm đã tắt!")
 end
 
--- Toggle bằng phím F
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
+-- Toggle F (vẫn giữ để bạn tắt/mở khi cần)
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
     if input.KeyCode == Enum.KeyCode.F then
         if farming then
             stopFarming()
@@ -138,6 +162,9 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
-print("🚀 SCRIPT FARM DUNGEON KING LEGACY ĐÃ LOAD XONG!")
-print("Nhấn **F** để BẬT / TẮT farm")
-print("Đảm bảo bạn đã equip vũ khí + trái trước khi bật!")
+-- ================== TỰ ĐỘNG BẬT FARM NGAY KHI EXECUTE ==================
+print("🚀 SCRIPT KING LEGACY FARM ĐÃ LOAD!")
+print("Đang tự động farm ngay bây giờ...")
+startFarming()
+
+print("Nhấn **F** bất cứ lúc nào để TẮT / BẬT lại")
