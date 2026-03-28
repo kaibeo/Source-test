@@ -1,6 +1,6 @@
--- // KING LEGACY DUNGEON FARM - BAY LÊN ĐẦU + MẶT XUỐNG ĐẤT + M1 + Z X C V
--- UPDATE: TỰ ĐỘNG FARM NGAY KHI EXECUTE + CHỈ farm quái ĐỎ & ĐẦU LÂU ĐỎ
--- Paste vào Executor (Fluxus, Delta, Solara...) và Execute là farm luôn!
+-- // KING LEGACY DUNGEON FARM - TỰ FARM ALL QUÁI ĐỎ + CHỜ RESPAWN
+-- UPDATE: Farm tất cả quái đỏ → hết thì chờ spawn lại → farm tiếp (vô hạn)
+-- Paste vào Executor → Execute là farm luôn!
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -20,7 +20,6 @@ local heartbeatConn = nil
 local function hasGreenMark(mob)
     local head = mob:FindFirstChild("Head")
     if not head then return false end
-
     for _, gui in ipairs(head:GetDescendants()) do
         if gui:IsA("BillboardGui") or gui:IsA("SurfaceGui") then
             for _, child in ipairs(gui:GetDescendants()) do
@@ -40,7 +39,6 @@ end
 local function hasRedMarkOrRedSkull(mob)
     local head = mob:FindFirstChild("Head")
     if not head then return false end
-
     for _, gui in ipairs(head:GetDescendants()) do
         if gui:IsA("BillboardGui") or gui:IsA("SurfaceGui") then
             for _, child in ipairs(gui:GetDescendants()) do
@@ -67,7 +65,6 @@ local function isMarkedMob(mob)
         return false
     end
     if mob == character then return false end
-
     if hasGreenMark(mob) then return false end
     if hasRedMarkOrRedSkull(mob) then return true end
     return false
@@ -95,6 +92,7 @@ local function getClosestMarkedMob()
     return closest
 end
 
+-- Chỉ spam M1
 local function startAttackLoop()
     spawn(function()
         while farming do
@@ -102,15 +100,8 @@ local function startAttackLoop()
                 VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
                 task.wait(0.05)
                 VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-
-                for _, key in ipairs({"Z", "X", "C", "V"}) do
-                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
-                    task.wait(0.08)
-                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
-                    task.wait(0.05)
-                end
             end
-            task.wait(0.25)
+            task.wait(0.18)
         end
     end)
 end
@@ -129,28 +120,31 @@ local function startFarming()
         if target and target:FindFirstChild("HumanoidRootPart") then
             currentTarget = target
             local hrp = target.HumanoidRootPart
-            local aboveHead = hrp.Position + Vector3.new(0, hrp.Size.Y + 10, 0)
+
+            -- HẠ ĐỘ CAO +5 (bay sát đầu)
+            local aboveHead = hrp.Position + Vector3.new(0, hrp.Size.Y + 5, 0)
             local downCFrame = CFrame.new(aboveHead) * CFrame.Angles(math.rad(90), 0, 0)
             root.CFrame = downCFrame
         else
             currentTarget = nil
+            -- Không có quái → tự động chờ respawn (script vẫn chạy, chỉ chờ thôi)
         end
     end)
 
-    print("✅ FARM DUNGEON ĐÃ BẬT TỰ ĐỘNG!")
-    print("   • Bay lên đầu + mặt xuống đất")
-    print("   • Spam M1 + Z X C V")
-    print("   • Chỉ farm quái ĐỎ & ĐẦU LÂU ĐỎ")
+    print("✅ FARM ALL QUÁI ĐỎ ĐÃ BẬT TỰ ĐỘNG!")
+    print("   • Farm tất cả quái đỏ (có bao nhiêu farm bấy nhiêu)")
+    print("   • Hết quái → tự chờ respawn và farm tiếp")
+    print("   • Bay sát đầu +5 + Chỉ spam M1")
 end
 
 local function stopFarming()
     farming = false
     if heartbeatConn then heartbeatConn:Disconnect() end
     currentTarget = nil
-    print("⛔ Farm đã tắt!")
+    print("⛔ Farm đã dừng!")
 end
 
--- Toggle F (vẫn giữ để bạn tắt/mở khi cần)
+-- Toggle F
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.KeyCode == Enum.KeyCode.F then
@@ -162,9 +156,9 @@ UserInputService.InputBegan:Connect(function(input, gp)
     end
 end)
 
--- ================== TỰ ĐỘNG BẬT FARM NGAY KHI EXECUTE ==================
-print("🚀 SCRIPT KING LEGACY FARM ĐÃ LOAD!")
-print("Đang tự động farm ngay bây giờ...")
+-- ================== TỰ ĐỘNG FARM NGAY KHI EXECUTE ==================
+print("🚀 SCRIPT KING LEGACY FARM ALL ĐÃ LOAD!")
+print("Đang tự động farm tất cả quái đỏ ngay bây giờ...")
 startFarming()
 
 print("Nhấn **F** bất cứ lúc nào để TẮT / BẬT lại")
