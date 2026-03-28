@@ -1,5 +1,5 @@
--- // KING LEGACY DUNGEON FARM - TỰ FARM ALL QUÁI ĐỎ + CHỜ RESPAWN
--- UPDATE: Farm tất cả quái đỏ → hết thì chờ spawn lại → farm tiếp (vô hạn)
+-- // KING LEGACY DUNGEON FARM - FARM 1 CON XONG DỪNG + NHÌN XUỐNG ĐẤT
+-- UPDATE: Chỉ farm 1 con đỏ → dừng, nhìn thẳng xuống đất (không nhìn lên)
 -- Paste vào Executor → Execute là farm luôn!
 
 local Players = game:GetService("Players")
@@ -15,6 +15,7 @@ local root = character:WaitForChild("HumanoidRootPart")
 local farming = false
 local currentTarget = nil
 local heartbeatConn = nil
+local hasFarmedOne = false
 
 -- ================== KIỂM TRA MÀU XANH LÁ (KHÔNG FARM) ==================
 local function hasGreenMark(mob)
@@ -35,7 +36,7 @@ local function hasGreenMark(mob)
     return false
 end
 
--- ================== KIỂM TRA MÀU ĐỎ + ĐẦU LÂU ĐỎ (FARM) ==================
+-- ================== KIỂM TRA MÀU ĐỎ + ĐẦU LÂU ĐỎ ==================
 local function hasRedMarkOrRedSkull(mob)
     local head = mob:FindFirstChild("Head")
     if not head then return false end
@@ -107,34 +108,44 @@ local function startAttackLoop()
 end
 
 local function startFarming()
-    if farming then return end
+    if farming or hasFarmedOne then return end
     farming = true
     currentTarget = nil
+    hasFarmedOne = false
 
     startAttackLoop()
 
     heartbeatConn = RunService.Heartbeat:Connect(function()
         if not farming then return end
+        if hasFarmedOne then
+            stopFarming()
+            return
+        end
 
         local target = getClosestMarkedMob()
         if target and target:FindFirstChild("HumanoidRootPart") then
             currentTarget = target
             local hrp = target.HumanoidRootPart
 
-            -- HẠ ĐỘ CAO +5 (bay sát đầu)
+            -- BAY SÁT ĐẦU +5
             local aboveHead = hrp.Position + Vector3.new(0, hrp.Size.Y + 5, 0)
-            local downCFrame = CFrame.new(aboveHead) * CFrame.Angles(math.rad(90), 0, 0)
-            root.CFrame = downCFrame
+
+            -- SỬA: NHÌN THẲNG XUỐNG ĐẤT (nhìn thẳng vào quái bên dưới)
+            root.CFrame = CFrame.new(aboveHead, hrp.Position)
+
+            -- Nếu quái chết → farm xong 1 con, dừng
+            if target.Humanoid.Health <= 0 then
+                hasFarmedOne = true
+            end
         else
             currentTarget = nil
-            -- Không có quái → tự động chờ respawn (script vẫn chạy, chỉ chờ thôi)
         end
     end)
 
-    print("✅ FARM ALL QUÁI ĐỎ ĐÃ BẬT TỰ ĐỘNG!")
-    print("   • Farm tất cả quái đỏ (có bao nhiêu farm bấy nhiêu)")
-    print("   • Hết quái → tự chờ respawn và farm tiếp")
-    print("   • Bay sát đầu +5 + Chỉ spam M1")
+    print("✅ FARM 1 CON ĐÃ BẬT!")
+    print("   • Farm 1 con đỏ xong → dừng hẳn (dù còn quái)")
+    print("   • Bay sát đầu + nhìn thẳng xuống đất")
+    print("   • Chỉ spam M1")
 end
 
 local function stopFarming()
@@ -144,21 +155,22 @@ local function stopFarming()
     print("⛔ Farm đã dừng!")
 end
 
--- Toggle F
+-- Toggle F (bật lại để farm con tiếp theo)
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.KeyCode == Enum.KeyCode.F then
         if farming then
             stopFarming()
         else
+            hasFarmedOne = false
             startFarming()
         end
     end
 end)
 
--- ================== TỰ ĐỘNG FARM NGAY KHI EXECUTE ==================
-print("🚀 SCRIPT KING LEGACY FARM ALL ĐÃ LOAD!")
-print("Đang tự động farm tất cả quái đỏ ngay bây giờ...")
+-- TỰ ĐỘNG FARM NGAY KHI EXECUTE
+print("🚀 SCRIPT FARM 1 CON ĐÃ LOAD!")
+print("Đang tự động farm 1 con đỏ ngay bây giờ...")
 startFarming()
 
-print("Nhấn **F** bất cứ lúc nào để TẮT / BẬT lại")
+print("Nhấn **F** để TẮT / BẬT farm con tiếp theo")
