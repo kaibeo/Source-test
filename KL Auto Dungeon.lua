@@ -1,4 +1,4 @@
--- // KING LEGACY - FULL DODGE ALL SKILL + 7M FARM
+-- // KING LEGACY - FINAL AIM LOCK + PERFECT DODGE
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -71,39 +71,42 @@ local function getClosestMob()
     return closest
 end
 
--- ================== DETECT ALL SKILL ==================
+-- ================== AIM LOCK ==================
+local function aimAtTarget(target)
+    if not target then return end
+    local part = target:FindFirstChild("Head") or target:FindFirstChild("HumanoidRootPart")
+    if not part then return end
+
+    root.CFrame = CFrame.new(root.Position, part.Position)
+end
+
+-- ================== DETECT SKILL ==================
 local function isDangerous(mob)
     if not mob then return false end
 
     for _, v in ipairs(mob:GetDescendants()) do
-
-        -- 🔥 Beam = skill instant
         if v:IsA("Beam") and v.Enabled then
             lastSkillTick = tick()
             return true
         end
 
-        -- 🔥 Particle (cast hoặc nổ)
         if v:IsA("ParticleEmitter") and v.Enabled then
-            lastSkillTick = tick()
-            return true
+            local parent = v.Parent
+            if parent and parent:IsA("BasePart") then
+                if (parent.Position - root.Position).Magnitude < 100 then
+                    lastSkillTick = tick()
+                    return true
+                end
+            end
         end
 
-        -- 🔥 Sound (nhiều boss cast có âm thanh)
         if v:IsA("Sound") and v.Playing then
-            lastSkillTick = tick()
-            return true
-        end
-
-        -- 🔥 Animation (boss chuẩn bị skill)
-        if v:IsA("AnimationTrack") and v.IsPlaying then
             lastSkillTick = tick()
             return true
         end
     end
 
-    -- 🧠 Giữ né thêm 1.2s sau khi skill xuất hiện
-    if tick() - lastSkillTick < 1.2 then
+    if tick() - lastSkillTick < 1 then
         return true
     end
 
@@ -115,15 +118,18 @@ local function attack()
     spawn(function()
         while farming do
             if currentTarget and currentTarget:FindFirstChild("HumanoidRootPart") then
-                local hrp = currentTarget.HumanoidRootPart
 
-                root.CFrame = CFrame.new(root.Position, hrp.Position)
+                aimAtTarget(currentTarget)
 
+                -- M1
                 for i = 1,4 do
                     VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,1)
                     VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
                 end
 
+                aimAtTarget(currentTarget)
+
+                -- Skill
                 for _, key in ipairs({"Z","X","C","V"}) do
                     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
                     VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
@@ -151,13 +157,14 @@ local function startFarm()
 
         currentTarget = target
 
-        -- 🔥 kích hoạt né
+        -- luôn aim
+        aimAtTarget(currentTarget)
+
         if isDangerous(target) then
             dodgeTime = 2.5
         end
 
         if dodgeTime > 0 then
-            -- 🛡️ né full
             currentAngle = currentAngle - 12 * dt
 
             local offset = Vector3.new(
@@ -176,7 +183,6 @@ local function startFarm()
             dodgeTime = dodgeTime - dt
 
         else
-            -- ⚔️ farm +7m
             local pos = hrp.Position + Vector3.new(0, 7, 0)
 
             root.CFrame = CFrame.new(pos, hrp.Position)
@@ -186,7 +192,7 @@ local function startFarm()
         end
     end)
 
-    print("🔥 FULL DODGE ALL SKILL + 90M RADIUS")
+    print("🔥 FINAL: AIM LOCK + PERFECT DODGE + 7M")
 end
 
 UserInputService.InputBegan:Connect(function(input, gp)
