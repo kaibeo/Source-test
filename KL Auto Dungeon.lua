@@ -1,4 +1,4 @@
--- // KING LEGACY - FINAL FIX NO SPAM DODGE
+-- // KING LEGACY - FINAL REAL DODGE + HEAD LOCK
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -70,28 +70,27 @@ local function getClosestMob()
     return closest
 end
 
--- ================== DETECT SKILL (FIXED) ==================
+-- ================== REAL SKILL DETECT ==================
 local function isDangerous(mob)
     if not mob then return false end
 
-    -- cooldown né
-    if tick() - lastDodge < 0.8 then
+    if tick() - lastDodge < 0.7 then
         return false
     end
 
     for _, v in ipairs(mob:GetDescendants()) do
-        if v:IsA("Beam") then
-            local a1 = v.Attachment1
-            if a1 and (a1.WorldPosition - root.Position).Magnitude < 60 then
-                lastDodge = tick()
-                return true
-            end
+
+        -- Beam = skill thật
+        if v:IsA("Beam") and v.Enabled then
+            lastDodge = tick()
+            return true
         end
 
+        -- Particle gần player
         if v:IsA("ParticleEmitter") and v.Enabled then
             local parent = v.Parent
             if parent and parent:IsA("BasePart") then
-                if (parent.Position - root.Position).Magnitude < 40 then
+                if (parent.Position - root.Position).Magnitude < 60 then
                     lastDodge = tick()
                     return true
                 end
@@ -143,13 +142,13 @@ local function startFarm()
 
         currentTarget = target
 
-        -- chỉ kích hoạt né khi cần
+        -- chỉ né khi skill thật
         if isDangerous(target) and dodgeTime <= 0 then
             dodgeTime = 2
         end
 
         if dodgeTime > 0 then
-            -- né
+            -- 🛡️ né
             currentAngle = currentAngle - 14 * dt
 
             local offset = Vector3.new(
@@ -168,7 +167,7 @@ local function startFarm()
             dodgeTime = dodgeTime - dt
 
         else
-            -- farm đứng yên +7m
+            -- ⚔️ farm đứng yên +7m
             local pos = hrp.Position + Vector3.new(0, 7, 0)
 
             root.CFrame = CFrame.new(pos, hrp.Position)
@@ -178,7 +177,7 @@ local function startFarm()
         end
     end)
 
-    print("🔥 FINAL: FIX DODGE + 7M HEAD LOCK WORKING")
+    print("🔥 FINAL: REAL SKILL DODGE + 7M HEAD LOCK")
 end
 
 UserInputService.InputBegan:Connect(function(input, gp)
