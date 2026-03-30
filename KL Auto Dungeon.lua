@@ -1,6 +1,4 @@
--- // KING LEGACY DUNGEON FARM - QUAY VÒNG KIM ĐỒNG HỒ 7M + M1 + SKILL KIẾM & TRÁI
--- Lấy quái làm trung tâm, quay clockwise, spam M1 + Z X C V + Auto né kill skill
--- Paste vào Executor → Execute là farm luôn!
+-- // KING LEGACY DUNGEON FARM - FIX KHÔNG TP + BAY MƯỢT + M1 NHANH
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -14,19 +12,19 @@ local root = character:WaitForChild("HumanoidRootPart")
 
 local farming = false
 local currentTarget = nil
+local lastTarget = nil
 local heartbeatConn = nil
-local lastPosition = root.Position
 local currentAngle = 0
 local dodgeTime = 0
 
--- ================== DANH SÁCH TÊN QUÁI TỪ WIKI DUNGEON ==================
+-- ================== MOB ==================
 local dungeonMobNames = {
-    "imprisoned pirate", "pirate gunner", "bloodbound pirate", "imprisoned angel",
-    "imprisoned demon", "warden's bane", "mike", "shadowbane", "firelord", "lightbane",
-    "darkbane sentinel", "volcanus", "ravthus", "bomb warden", "shockwarden", "anuvaris",
-    "heartbreaker queen", "gravity warden", "ashen talon", "flame warden", "dark warden",
-    "magma warden", "ice warden", "light warden", "veyzor", "chaos crab", "craberno",
-    "warden", "bomb", "shock"
+    "imprisoned pirate","pirate gunner","bloodbound pirate","imprisoned angel",
+    "imprisoned demon","warden's bane","mike","shadowbane","firelord","lightbane",
+    "darkbane sentinel","volcanus","ravthus","bomb warden","shockwarden","anuvaris",
+    "heartbreaker queen","gravity warden","ashen talon","flame warden","dark warden",
+    "magma warden","ice warden","light warden","veyzor","chaos crab","craberno",
+    "warden","bomb","shock"
 }
 
 local function isDungeonMob(mob)
@@ -40,94 +38,75 @@ local function isDungeonMob(mob)
 end
 
 local function getClosestDungeonMob()
-    local mobs = {}
+    local closest, shortest = nil, math.huge
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Model") and isDungeonMob(obj) and obj:FindFirstChild("HumanoidRootPart") then
-            table.insert(mobs, obj)
-        end
-    end
-    local closest, shortest = nil, math.huge
-    local myPos = root.Position
-    for _, mob in ipairs(mobs) do
-        local dist = (myPos - mob.HumanoidRootPart.Position).Magnitude
-        if dist < shortest then
-            shortest = dist
-            closest = mob
+            local dist = (root.Position - obj.HumanoidRootPart.Position).Magnitude
+            if dist < shortest then
+                shortest = dist
+                closest = obj
+            end
         end
     end
     return closest
 end
 
--- ================== NHẬN DIỆN QUÁI XẢ KILL SKILL LÊN PLAYER ==================
+-- ================== DETECT SKILL ==================
 local function isTargetingPlayer(mob)
     if not mob then return false end
     for _, v in ipairs(mob:GetDescendants()) do
-        if v:IsA("Beam") and v.Attachment0 and v.Attachment1 then
-            if (v.Attachment1.WorldPosition - root.Position).Magnitude < 25 then
-                return true
-            end
-        end
-        if (v:IsA("ParticleEmitter") and v.Enabled) or v:IsA("Trail") then
-            if (v.WorldPosition - root.Position).Magnitude < 20 then
-                return true
-            end
+        if v:IsA("ParticleEmitter") and v.Enabled then
+            return true
         end
         local n = v.Name:lower()
-        if n:find("kill") or n:find("oneshot") or n:find("ultimate") or n:find("cast") or n:find("skill") then
+        if n:find("skill") or n:find("ultimate") then
             return true
         end
     end
     return false
 end
 
--- Spam M1 (kiếm) + Skill trái Z X C V
+-- ================== ATTACK ==================
 local function startAttackLoop()
     spawn(function()
         while farming do
-            if currentTarget and currentTarget:FindFirstChild("HumanoidRootPart") and currentTarget.Humanoid.Health > 0 then
+            if currentTarget and currentTarget:FindFirstChild("HumanoidRootPart") then
                 local hrp = currentTarget.HumanoidRootPart
-                -- Aim chính xác trước khi spam skill
+
+                -- aim chuẩn
                 root.CFrame = CFrame.new(root.Position, hrp.Position)
 
-                -- M1 (kiếm)
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-                task.wait(0.05)
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                -- M1 SIÊU NHANH
+                for i = 1,2 do
+                    VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,1)
+                    task.wait(0.02)
+                    VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
+                end
 
-                -- Skill trái Z X C V
-                for _, key in ipairs({"Z", "X", "C", "V"}) do
+                -- Skill
+                for _, key in ipairs({"Z","X","C","V"}) do
                     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
-                    task.wait(0.08)
-                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
                     task.wait(0.05)
+                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
                 end
             end
-            task.wait(0.18)
+            task.wait(0.1)
         end
     end)
 end
 
+-- ================== FARM ==================
 local function startFarming()
     if farming then return end
     farming = true
     currentTarget = nil
-    lastPosition = root.Position
+    lastTarget = nil
     currentAngle = 0
-    dodgeTime = 0
 
     startAttackLoop()
 
     heartbeatConn = RunService.Heartbeat:Connect(function(dt)
         if not farming then return end
-
-        -- Phát hiện bị tele ra ngoài dungeon
-        local currentPos = root.Position
-        if (currentPos - lastPosition).Magnitude > 200 then
-            stopFarming()
-            print("🚪 BỊ DỊCH CHUYỂN RA NGOÀI → Farm tự động dừng!")
-            return
-        end
-        lastPosition = currentPos
 
         local target = getClosestDungeonMob()
 
@@ -135,44 +114,49 @@ local function startFarming()
             currentTarget = target
             local hrp = target.HumanoidRootPart
 
-            -- Né khi quái xả kill skill lên player
+            -- FIX: đổi target → reset góc (tránh đứng im)
+            if target ~= lastTarget then
+                currentAngle = 0
+                lastTarget = target
+            end
+
+            -- né skill
             if isTargetingPlayer(target) then
-                dodgeTime = 2.0
+                dodgeTime = 1.5
             end
 
-            -- QUAY VÒNG THEO CHIỀU KIM ĐỒNG HỒ - LẤY QUÁI LÀM TRUNG TÂM
-            currentAngle = currentAngle + (-1.0) * dt   -- tốc độ vừa phải (1 vòng \~6-7 giây)
-            local radius = (dodgeTime > 0) and 12 or 7   -- né thì ra xa 12m
-            local heightOffset = 4
+            -- quay vòng
+            local speed = (dodgeTime > 0) and 3 or 1.5
+            currentAngle = currentAngle - speed * dt
 
-            if dodgeTime > 0 then
-                currentAngle = currentAngle + (-3.0) * dt   -- quay nhanh hơn để né
-                dodgeTime = dodgeTime - dt
-            end
+            local radius = (dodgeTime > 0) and 12 or 7
+            local height = 4
 
-            local offsetX = math.cos(currentAngle) * radius
-            local offsetZ = math.sin(currentAngle) * radius
-            local newPos = hrp.Position + Vector3.new(offsetX, heightOffset, offsetZ)
+            dodgeTime = math.max(0, dodgeTime - dt)
 
-            -- Di chuyển + nhìn vào quái (aim skill)
-            root.CFrame = CFrame.new(newPos, hrp.Position)
-        else
-            currentTarget = nil
+            local offset = Vector3.new(
+                math.cos(currentAngle) * radius,
+                height,
+                math.sin(currentAngle) * radius
+            )
+
+            local targetPos = hrp.Position + offset
+
+            -- FIX: BAY MƯỢT (KHÔNG TP)
+            root.CFrame = root.CFrame:Lerp(
+                CFrame.new(targetPos, hrp.Position),
+                0.25
+            )
         end
     end)
 
-    print("✅ FARM QUAY VÒNG KIM ĐỒNG HỒ ĐÃ BẬT!")
-    print("   • Lấy quái làm trung tâm, quay theo chiều kim đồng hồ cách 7m")
-    print("   • Spam M1 (kiếm) + skill trái Z X C V liên tục")
-    print("   • Tự động né khi quái xả kill skill lên player")
-    print("   • Chỉ farm quái có tên trên Wiki Dungeon")
+    print("✅ FARM MƯỢT + KHÔNG TP + M1 NHANH!")
 end
 
 local function stopFarming()
     farming = false
     if heartbeatConn then heartbeatConn:Disconnect() end
-    currentTarget = nil
-    print("⛔ Farm đã dừng!")
+    print("⛔ STOP")
 end
 
 -- Toggle F
@@ -183,9 +167,4 @@ UserInputService.InputBegan:Connect(function(input, gp)
     end
 end)
 
--- TỰ ĐỘNG FARM NGAY KHI EXECUTE
-print("🚀 SCRIPT FARM QUAY VÒNG 7M + M1 + SKILL KIẾM & TRÁI ĐÃ LOAD!")
-print("Đang tự động farm ngay bây giờ...")
 startFarming()
-
-print("Nhấn **F** để TẮT / BẬT lại nếu cần")
