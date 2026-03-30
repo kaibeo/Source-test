@@ -1,4 +1,4 @@
--- // KING LEGACY - FINAL FIX 10M + AUTO DODGE REAL
+-- // KING LEGACY - FINAL 7M + ONLY DODGE SPIN
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -69,15 +69,13 @@ local function getClosestMob()
     return closest
 end
 
--- ================== DETECT SKILL (BUFFED) ==================
+-- ================== DETECT SKILL ==================
 local function isDangerous(mob)
     if not mob then return false end
 
     for _, v in ipairs(mob:GetDescendants()) do
-        -- Beam (laser skill)
         if v:IsA("Beam") then return true end
 
-        -- Particle skill gần player
         if v:IsA("ParticleEmitter") and v.Enabled then
             local parent = v.Parent
             if parent and parent:IsA("BasePart") then
@@ -87,12 +85,6 @@ local function isDangerous(mob)
             end
         end
 
-        -- Animation đang cast skill
-        if v:IsA("Animation") then
-            return true
-        end
-
-        -- tên skill
         local n = v.Name:lower()
         if n:find("skill") or n:find("ultimate") or n:find("attack") then
             return true
@@ -143,12 +135,13 @@ local function startFarm()
 
         currentTarget = target
 
-        -- detect skill → né NGAY
+        -- detect skill
         if isDangerous(target) then
-            dodgeTime = 3 -- tăng thời gian né
+            dodgeTime = 3
         end
 
         if dodgeTime > 0 then
+            -- 🛡️ CHỈ LÚC NÉ MỚI QUAY
             currentAngle = currentAngle - 14 * dt
 
             local offset = Vector3.new(
@@ -167,8 +160,8 @@ local function startFarm()
             dodgeTime = dodgeTime - dt
 
         else
-            -- 🔥 đứng trên đầu +10m
-            local pos = hrp.Position + Vector3.new(0, 10, 0)
+            -- ⚔️ FARM ĐỨNG YÊN +7M (KHÔNG QUAY)
+            local pos = hrp.Position + Vector3.new(0, 7, 0)
 
             root.CFrame = CFrame.new(pos, hrp.Position)
 
@@ -177,7 +170,7 @@ local function startFarm()
         end
     end)
 
-    print("🔥 FINAL FIX: 10M + AUTO DODGE WORKING")
+    print("🔥 FINAL: 7M HEAD LOCK + ONLY DODGE SPIN")
 end
 
 UserInputService.InputBegan:Connect(function(input, gp)
