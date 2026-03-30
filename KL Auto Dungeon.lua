@@ -1,4 +1,7 @@
--- // KING LEGACY AUTO DUNGEON FARM - FIX ONLY 1 MOB + SKILL NOT WORKING
+-- // KING LEGACY DUNGEON FARM - FARM ALL ĐỎ + DỪNG KHI BỊ DỊCH CHUYỂN RA NGOÀI
+-- UPDATE: Farm liên tục đến khi teleport ra ngoài thì dừng (theo yêu cầu bạn)
+-- Paste vào Executor → Execute là farm luôn!
+
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
@@ -8,46 +11,13 @@ local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local root = character:WaitForChild("HumanoidRootPart")
-local humanoid = character:WaitForChild("Humanoid")
 
 local farming = false
 local currentTarget = nil
 local heartbeatConn = nil
+local lastPosition = root.Position  -- Dùng để phát hiện teleport
 
--- Anti Fall + Noclip nhẹ
-local function setupAntiFall()
-    spawn(function()
-        while farming and character and character.Parent do
-            for _, part in ipairs(character:GetDescendants()) do
-                if part:IsA("BasePart") and part.CanCollide then
-                    part.CanCollide = false
-                end
-            end
-            task.wait(0.6)
-        end
-    end)
-end
-
--- Check Red Mark (Enemy trong Dungeon)
-local function hasRedMark(mob)
-    local head = mob:FindFirstChild("Head") or mob:FindFirstChildWhichIsA("BasePart")
-    if not head then return false end
-    for _, gui in ipairs(head:GetDescendants()) do
-        if gui:IsA("BillboardGui") or gui:IsA("SurfaceGui") then
-            for _, child in ipairs(gui:GetDescendants()) do
-                if child:IsA("ImageLabel") or child:IsA("Frame") then
-                    local color = child.ImageColor3 or child.BackgroundColor3
-                    if color and color.R > 0.65 and color.G < 0.35 and color.B < 0.35 then
-                        return true
-                    end
-                end
-            end
-        end
-    end
-    return false
-end
-
--- Check Green Mark (Skip quest/safe mob)
+-- ================== KIỂM TRA MÀU XANH LÁ (KHÔNG FARM) ==================
 local function hasGreenMark(mob)
     local head = mob:FindFirstChild("Head")
     if not head then return false end
@@ -56,7 +26,7 @@ local function hasGreenMark(mob)
             for _, child in ipairs(gui:GetDescendants()) do
                 if child:IsA("ImageLabel") or child:IsA("Frame") then
                     local color = child.ImageColor3 or child.BackgroundColor3
-                    if color and color.G > 0.65 and color.R < 0.35 then
+                    if color and color.G > 0.75 and color.R < 0.25 and color.B < 0.25 then
                         return true
                     end
                 end
@@ -66,122 +36,143 @@ local function hasGreenMark(mob)
     return false
 end
 
-local function isValidMob(mob)
-    if not mob or not mob:IsA("Model") then return false end
-    local hum = mob:FindFirstChild("Humanoid")
-    local hrp = mob:FindFirstChild("HumanoidRootPart")
-    if not hum or not hrp or hum.Health <= 0 then return false end
-    if mob == character then return false end
-    if hasGreenMark(mob) then return false end
-    return hasRedMark(mob)
+-- ================== KIỂM TRA MÀU ĐỎ + ĐẦU LÂU ĐỎ ==================
+local function hasRedMarkOrRedSkull(mob)
+    local head = mob:FindFirstChild("Head")
+    if not head then return false end
+    for _, gui in ipairs(head:GetDescendants()) do
+        if gui:IsA("BillboardGui") or gui:IsA("SurfaceGui") then
+            for _, child in ipairs(gui:GetDescendants()) do
+                if child:IsA("ImageLabel") or child:IsA("Frame") then
+                    local color = child.ImageColor3 or child.BackgroundColor3
+                    if color and color.R > 0.75 and color.G < 0.25 and color.B < 0.25 then
+                        return true
+                    end
+                end
+            end
+        end
+    end
+
+    local nameLower = mob.Name:lower()
+    if string.find(nameLower, "firelord") or string.find(nameLower, "pirate gunner") or 
+       string.find(nameLower, "elite") or string.find(nameLower, "boss") then
+        return true
+    end
+    return false
 end
 
--- Tìm mob gần nhất (tối ưu + giới hạn khoảng cách)
-local function getClosestMob()
-    local closest, minDist = nil, math.huge
-    for _, v in ipairs(Workspace:GetDescendants()) do
-        if isValidMob(v) then
-            local dist = (root.Position - v.HumanoidRootPart.Position).Magnitude
-            if dist < minDist and dist < 600 then
-                minDist = dist
-                closest = v
-            end
+local function isMarkedMob(mob)
+    if not mob or not mob:FindFirstChild("Humanoid") or mob.Humanoid.Health <= 0 then
+        return false
+    end
+    if mob == character then return false end
+    if hasGreenMark(mob) then return false end
+    if hasRedMarkOrRedSkull(mob) then return true end
+    return false
+end
+
+local function getClosestMarkedMob()
+    local mobs = {}
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and isMarkedMob(obj) and obj:FindFirstChild("HumanoidRootPart") then
+            table.insert(mobs, obj)
+        end
+    end
+
+    local closest = nil
+    local shortest = math.huge
+    local myPos = root.Position
+
+    for _, mob in ipairs(mobs) do
+        local dist = (myPos - mob.HumanoidRootPart.Position).Magnitude
+        if dist < shortest then
+            shortest = dist
+            closest = mob
         end
     end
     return closest
 end
 
-local function attack()
-    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-    task.wait(0.04)
-    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-end
-
-local function useSkills()
-    local keys = {"Z","X","C","V"}
-    for _, k in ipairs(keys) do
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[k], false, game)
-        task.wait(0.07)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[k], false, game)
-        task.wait(0.18)
-    end
-end
-
-local function startFarm()
-    if farming then return end
-    farming = true
-    setupAntiFall()
-
-    -- Spam M1
+-- Chỉ spam M1
+local function startAttackLoop()
     spawn(function()
         while farming do
             if currentTarget and currentTarget:FindFirstChild("Humanoid") and currentTarget.Humanoid.Health > 0 then
-                attack()
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                task.wait(0.05)
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
             end
-            task.wait(0.11)
+            task.wait(0.18)
         end
     end)
-
-    -- Spam Skill (giảm delay để dùng thường xuyên hơn)
-    spawn(function()
-        while farming do
-            if currentTarget and currentTarget:FindFirstChild("Humanoid") and currentTarget.Humanoid.Health > 5 then
-                useSkills()
-            end
-            task.wait(0.75)   -- Giảm từ 0.9 xuống để skill dùng nhiều hơn
-        end
-    end)
-
-    heartbeatConn = RunService.Heartbeat:Connect(function()
-        if not farming or not root then return end
-
-        -- Kiểm tra target chết hoặc mất → tìm mới NGAY
-        if not currentTarget 
-           or not currentTarget.Parent 
-           or not currentTarget:FindFirstChild("Humanoid") 
-           or currentTarget.Humanoid.Health <= 5 then
-            
-            currentTarget = getClosestMob()
-        end
-
-        if currentTarget and currentTarget:FindFirstChild("HumanoidRootPart") then
-            local hrp = currentTarget.HumanoidRootPart
-            local abovePos = hrp.Position + Vector3.new(0, hrp.Size.Y + 6, 0)
-            root.CFrame = CFrame.new(abovePos, hrp.Position)
-        end
-    end)
-
-    print("✅ AUTO DUNGEON FARM FIXED - Sẽ chuyển mob & spam skill liên tục")
 end
 
-local function stopFarm()
+local function startFarming()
+    if farming then return end
+    farming = true
+    currentTarget = nil
+    lastPosition = root.Position
+
+    startAttackLoop()
+
+    heartbeatConn = RunService.Heartbeat:Connect(function()
+        if not farming then return end
+
+        -- PHÁT HIỆN DỊCH CHUYỂN RA NGOÀI (teleport)
+        local currentPos = root.Position
+        if (currentPos - lastPosition).Magnitude > 200 then
+            stopFarming()
+            print("🚪 ĐÃ BỊ DỊCH CHUYỂN RA NGOÀI → Farm tự động dừng!")
+            return
+        end
+        lastPosition = currentPos
+
+        local target = getClosestMarkedMob()
+        if target and target:FindFirstChild("HumanoidRootPart") then
+            currentTarget = target
+            local hrp = target.HumanoidRootPart
+
+            -- BAY SÁT ĐẦU +5
+            local aboveHead = hrp.Position + Vector3.new(0, hrp.Size.Y + 5, 0)
+
+            -- NHÌN THẲNG XUỐNG ĐẤT (sửa như bạn yêu cầu)
+            root.CFrame = CFrame.new(aboveHead, hrp.Position)
+        else
+            currentTarget = nil
+            -- Hết quái → tự chờ respawn (script vẫn chạy)
+        end
+    end)
+
+    print("✅ FARM ALL QUÁI ĐỎ ĐÃ BẬT TỰ ĐỘNG!")
+    print("   • Farm tất cả quái đỏ + chờ respawn")
+    print("   • Bay sát đầu + nhìn thẳng xuống đất")
+    print("   • Chỉ spam M1")
+    print("   • Tự dừng khi bị dịch chuyển ra ngoài")
+end
+
+local function stopFarming()
     farming = false
     if heartbeatConn then heartbeatConn:Disconnect() end
     currentTarget = nil
-    print("⛔ STOP FARM")
+    print("⛔ Farm đã dừng!")
 end
 
--- Toggle bằng phím F
+-- Toggle F (bật/tắt thủ công nếu cần)
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.KeyCode == Enum.KeyCode.F then
         if farming then
-            stopFarm()
+            stopFarming()
         else
-            startFarm()
+            startFarming()
         end
     end
 end)
 
--- Xử lý khi chết/respawn
-player.CharacterAdded:Connect(function(newChar)
-    character = newChar
-    root = newChar:WaitForChild("HumanoidRootPart", 5)
-    humanoid = newChar:WaitForChild("Humanoid", 5)
-    if farming then
-        task.wait(1.5)
-        startFarm()
-    end
-end)
+-- ================== TỰ ĐỘNG FARM NGAY KHI EXECUTE ==================
+print("🚀 SCRIPT KING LEGACY FARM ALL ĐÃ LOAD!")
+print("Đang tự động farm tất cả quái đỏ ngay bây giờ...")
+startFarming()
 
-startFarm()  -- Auto bật khi chạy script
+print("Script sẽ tự dừng khi bạn bị dịch chuyển ra ngoài dungeon!")
+print("Nhấn **F** nếu muốn tắt/bật thủ công")
