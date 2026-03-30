@@ -1,4 +1,4 @@
--- // KING LEGACY - FULL FARM FINAL (NO PLAYER TARGET)
+-- // KING LEGACY - FINAL MAX SPEED + DODGE 140M
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -16,7 +16,7 @@ local lastTarget = nil
 local currentAngle = 0
 local dodgeTime = 0
 
--- ================== FULL MOB LIST ==================
+-- ================== MOB LIST ==================
 local dungeonMobNames = {
     "imprisoned pirate","pirate gunner","bloodbound pirate",
     "imprisoned angel","imprisoned demon",
@@ -44,15 +44,12 @@ local function isDungeonMob(mob)
     if not mob or not mob:FindFirstChild("Humanoid") then return false end
     if mob.Humanoid.Health <= 0 then return false end
 
-    -- ❌ loại player
     if isPlayerCharacter(mob) then return false end
     if mob == character then return false end
-
     if not mob:FindFirstChild("HumanoidRootPart") then return false end
 
     local name = mob.Name:lower()
 
-    -- ✅ chỉ lấy mob trong list
     for _, v in ipairs(dungeonMobNames) do
         if name:find(v) then
             return true
@@ -84,12 +81,8 @@ end
 local function isDangerous(mob)
     if not mob then return false end
     for _, v in ipairs(mob:GetDescendants()) do
-        if v:IsA("ParticleEmitter") and v.Enabled then
-            return true
-        end
-        if v:IsA("Beam") then
-            return true
-        end
+        if v:IsA("ParticleEmitter") and v.Enabled then return true end
+        if v:IsA("Beam") then return true end
         local n = v.Name:lower()
         if n:find("skill") or n:find("ultimate") or n:find("kill") then
             return true
@@ -105,7 +98,6 @@ local function attack()
             if currentTarget and currentTarget:FindFirstChild("HumanoidRootPart") then
                 local hrp = currentTarget.HumanoidRootPart
 
-                -- aim
                 root.CFrame = CFrame.new(root.Position, hrp.Position)
 
                 -- ⚡ M1 MAX SPEED
@@ -114,7 +106,7 @@ local function attack()
                     VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
                 end
 
-                -- ⚡ skill spam
+                -- ⚡ SKILL MAX SPEED
                 for _, key in ipairs({"Z","X","C","V"}) do
                     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
                     VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
@@ -142,7 +134,6 @@ local function startFarm()
 
         currentTarget = target
 
-        -- reset khi đổi target
         if target ~= lastTarget then
             currentAngle = 0
             lastTarget = target
@@ -150,21 +141,22 @@ local function startFarm()
 
         -- detect skill
         if isDangerous(target) then
-            dodgeTime = 2
+            dodgeTime = 2.5
         end
 
         local height = 4
         local radius = 6
         local speed = 4
 
-        -- 🛡️ né skill
+        -- 🛡️ NÉ PRO
         if dodgeTime > 0 then
-            height = 70
-            radius = 15
-            speed = 10
+            height = 140
+            radius = 70
+            speed = 12
             dodgeTime = dodgeTime - dt
         end
 
+        -- 🔄 CLOCKWISE
         currentAngle = currentAngle - speed * dt
 
         local offset = Vector3.new(
@@ -175,19 +167,18 @@ local function startFarm()
 
         local targetPos = hrp.Position + offset
 
-        -- 🚀 bay mượt
+        -- 🚀 BAY MƯỢT
         root.CFrame = root.CFrame:Lerp(
             CFrame.new(targetPos, hrp.Position),
-            0.5
+            0.6
         )
     end)
 
-    print("🔥 FARM FINAL: KHÔNG ĐÁNH NGƯỜI + MAX SPEED + DODGE 70M")
+    print("🔥 FINAL: FARM MAX SPEED + DODGE 140M (ANTI PLAYER)")
 end
 
 local function stopFarm()
     farming = false
-    print("⛔ STOP")
 end
 
 -- toggle F
