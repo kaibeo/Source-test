@@ -1,4 +1,4 @@
--- // KING LEGACY - FINAL FIX +5M HEAD LOCK
+-- // KING LEGACY - FINAL FIX 10M + AUTO DODGE REAL
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -31,9 +31,7 @@ local dungeonMobNames = {
 -- ================== CHECK PLAYER ==================
 local function isPlayerCharacter(model)
     for _, plr in ipairs(Players:GetPlayers()) do
-        if plr.Character == model then
-            return true
-        end
+        if plr.Character == model then return true end
     end
     return false
 end
@@ -50,7 +48,6 @@ local function isDungeonMob(mob)
     for _, v in ipairs(dungeonMobNames) do
         if name:find(v) then return true end
     end
-
     return false
 end
 
@@ -72,17 +69,36 @@ local function getClosestMob()
     return closest
 end
 
--- ================== DETECT SKILL ==================
+-- ================== DETECT SKILL (BUFFED) ==================
 local function isDangerous(mob)
     if not mob then return false end
+
     for _, v in ipairs(mob:GetDescendants()) do
-        if v:IsA("ParticleEmitter") and v.Enabled then return true end
+        -- Beam (laser skill)
         if v:IsA("Beam") then return true end
+
+        -- Particle skill gần player
+        if v:IsA("ParticleEmitter") and v.Enabled then
+            local parent = v.Parent
+            if parent and parent:IsA("BasePart") then
+                if (parent.Position - root.Position).Magnitude < 60 then
+                    return true
+                end
+            end
+        end
+
+        -- Animation đang cast skill
+        if v:IsA("Animation") then
+            return true
+        end
+
+        -- tên skill
         local n = v.Name:lower()
-        if n:find("skill") or n:find("ultimate") or n:find("kill") then
+        if n:find("skill") or n:find("ultimate") or n:find("attack") then
             return true
         end
     end
+
     return false
 end
 
@@ -95,13 +111,11 @@ local function attack()
 
                 root.CFrame = CFrame.new(root.Position, hrp.Position)
 
-                -- M1 nhanh
                 for i = 1,4 do
                     VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,1)
                     VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
                 end
 
-                -- Skill nhanh
                 for _, key in ipairs({"Z","X","C","V"}) do
                     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
                     VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
@@ -129,13 +143,13 @@ local function startFarm()
 
         currentTarget = target
 
-        -- detect skill → luôn né
+        -- detect skill → né NGAY
         if isDangerous(target) then
-            dodgeTime = 2.5
+            dodgeTime = 3 -- tăng thời gian né
         end
 
         if dodgeTime > 0 then
-            currentAngle = currentAngle - 12 * dt
+            currentAngle = currentAngle - 14 * dt
 
             local offset = Vector3.new(
                 math.cos(currentAngle) * 70,
@@ -147,24 +161,23 @@ local function startFarm()
 
             root.CFrame = root.CFrame:Lerp(
                 CFrame.new(pos, hrp.Position),
-                0.6
+                0.7
             )
 
             dodgeTime = dodgeTime - dt
 
         else
-            -- 🔥 đứng trên đầu +5m
-            local pos = hrp.Position + Vector3.new(0, 5, 0)
+            -- 🔥 đứng trên đầu +10m
+            local pos = hrp.Position + Vector3.new(0, 10, 0)
 
             root.CFrame = CFrame.new(pos, hrp.Position)
 
-            -- giữ cứng
             root.Velocity = Vector3.zero
             root.AssemblyLinearVelocity = Vector3.zero
         end
     end)
 
-    print("🔥 FARM +5M HEAD LOCK + AUTO DODGE ON")
+    print("🔥 FINAL FIX: 10M + AUTO DODGE WORKING")
 end
 
 UserInputService.InputBegan:Connect(function(input, gp)
