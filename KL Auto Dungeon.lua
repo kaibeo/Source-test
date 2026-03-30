@@ -1,4 +1,4 @@
--- // KING LEGACY - FINAL INSTANT DODGE + 7M HEAD LOCK
+-- // KING LEGACY - FULL DODGE ALL SKILL + 7M FARM
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -14,6 +14,7 @@ local farming = false
 local currentTarget = nil
 local currentAngle = 0
 local dodgeTime = 0
+local lastSkillTick = 0
 
 -- ================== MOB LIST ==================
 local dungeonMobNames = {
@@ -70,18 +71,40 @@ local function getClosestMob()
     return closest
 end
 
--- ================== DETECT SKILL (INSTANT) ==================
+-- ================== DETECT ALL SKILL ==================
 local function isDangerous(mob)
     if not mob then return false end
 
     for _, v in ipairs(mob:GetDescendants()) do
+
+        -- 🔥 Beam = skill instant
         if v:IsA("Beam") and v.Enabled then
+            lastSkillTick = tick()
             return true
         end
 
+        -- 🔥 Particle (cast hoặc nổ)
         if v:IsA("ParticleEmitter") and v.Enabled then
+            lastSkillTick = tick()
             return true
         end
+
+        -- 🔥 Sound (nhiều boss cast có âm thanh)
+        if v:IsA("Sound") and v.Playing then
+            lastSkillTick = tick()
+            return true
+        end
+
+        -- 🔥 Animation (boss chuẩn bị skill)
+        if v:IsA("AnimationTrack") and v.IsPlaying then
+            lastSkillTick = tick()
+            return true
+        end
+    end
+
+    -- 🧠 Giữ né thêm 1.2s sau khi skill xuất hiện
+    if tick() - lastSkillTick < 1.2 then
+        return true
     end
 
     return false
@@ -128,43 +151,32 @@ local function startFarm()
 
         currentTarget = target
 
-        -- ⚡ INSTANT DODGE NGAY LẬP TỨC
+        -- 🔥 kích hoạt né
         if isDangerous(target) then
-            dodgeTime = 2
-
-            local offset = Vector3.new(
-                math.random(-70,70),
-                140,
-                math.random(-70,70)
-            )
-
-            root.CFrame = CFrame.new(
-                hrp.Position + offset,
-                hrp.Position
-            )
+            dodgeTime = 2.5
         end
 
         if dodgeTime > 0 then
-            -- quay né
-            currentAngle = currentAngle - 14 * dt
+            -- 🛡️ né full
+            currentAngle = currentAngle - 12 * dt
 
             local offset = Vector3.new(
-                math.cos(currentAngle) * 70,
+                math.cos(currentAngle) * 90,
                 140,
-                math.sin(currentAngle) * 70
+                math.sin(currentAngle) * 90
             )
 
             local pos = hrp.Position + offset
 
             root.CFrame = root.CFrame:Lerp(
                 CFrame.new(pos, hrp.Position),
-                0.7
+                0.8
             )
 
             dodgeTime = dodgeTime - dt
 
         else
-            -- farm đứng yên +7m
+            -- ⚔️ farm +7m
             local pos = hrp.Position + Vector3.new(0, 7, 0)
 
             root.CFrame = CFrame.new(pos, hrp.Position)
@@ -174,7 +186,7 @@ local function startFarm()
         end
     end)
 
-    print("🔥 FINAL: INSTANT DODGE + 7M HEAD LOCK")
+    print("🔥 FULL DODGE ALL SKILL + 90M RADIUS")
 end
 
 UserInputService.InputBegan:Connect(function(input, gp)
