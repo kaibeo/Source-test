@@ -1,4 +1,4 @@
--- // KING LEGACY - FINAL MAX SPEED + DODGE 140M
+-- // KING LEGACY - FINAL GOD MODE FARM
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -98,6 +98,7 @@ local function attack()
             if currentTarget and currentTarget:FindFirstChild("HumanoidRootPart") then
                 local hrp = currentTarget.HumanoidRootPart
 
+                -- aim
                 root.CFrame = CFrame.new(root.Position, hrp.Position)
 
                 -- ⚡ M1 MAX SPEED
@@ -106,7 +107,7 @@ local function attack()
                     VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
                 end
 
-                -- ⚡ SKILL MAX SPEED
+                -- ⚡ skill spam
                 for _, key in ipairs({"Z","X","C","V"}) do
                     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
                     VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
@@ -134,47 +135,43 @@ local function startFarm()
 
         currentTarget = target
 
-        if target ~= lastTarget then
-            currentAngle = 0
-            lastTarget = target
-        end
-
         -- detect skill
         if isDangerous(target) then
             dodgeTime = 2.5
         end
 
-        local height = 4
-        local radius = 6
-        local speed = 4
-
-        -- 🛡️ NÉ PRO
+        -- 🛡️ NÉ
         if dodgeTime > 0 then
-            height = 140
-            radius = 70
-            speed = 12
+            currentAngle = currentAngle - 12 * dt
+
+            local offset = Vector3.new(
+                math.cos(currentAngle) * 70,
+                140,
+                math.sin(currentAngle) * 70
+            )
+
+            local pos = hrp.Position + offset
+
+            root.CFrame = root.CFrame:Lerp(
+                CFrame.new(pos, hrp.Position),
+                0.6
+            )
+
             dodgeTime = dodgeTime - dt
+
+        else
+            -- 🔒 HARD LOCK TRÊN ĐẦU
+            local pos = hrp.Position + Vector3.new(0, 2, 0)
+
+            root.CFrame = CFrame.new(pos, hrp.Position)
+
+            -- giữ cứng
+            root.Velocity = Vector3.zero
+            root.AssemblyLinearVelocity = Vector3.zero
         end
-
-        -- 🔄 CLOCKWISE
-        currentAngle = currentAngle - speed * dt
-
-        local offset = Vector3.new(
-            math.cos(currentAngle) * radius,
-            height,
-            math.sin(currentAngle) * radius
-        )
-
-        local targetPos = hrp.Position + offset
-
-        -- 🚀 BAY MƯỢT
-        root.CFrame = root.CFrame:Lerp(
-            CFrame.new(targetPos, hrp.Position),
-            0.6
-        )
     end)
 
-    print("🔥 FINAL: FARM MAX SPEED + DODGE 140M (ANTI PLAYER)")
+    print("🔥 FINAL GOD MODE: HARD LOCK + NO PLAYER + MAX SPEED")
 end
 
 local function stopFarm()
