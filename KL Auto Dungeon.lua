@@ -1,4 +1,4 @@
--- // KING LEGACY - FINAL AIM LOCK + PERFECT DODGE
+-- // KING LEGACY - FINAL STABLE FARM + SMART DODGE
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -15,6 +15,7 @@ local currentTarget = nil
 local currentAngle = 0
 local dodgeTime = 0
 local lastSkillTick = 0
+local lastDodgeTime = 0
 
 -- ================== MOB LIST ==================
 local dungeonMobNames = {
@@ -49,7 +50,6 @@ local function isDungeonMob(mob)
     for _, v in ipairs(dungeonMobNames) do
         if name:find(v) then return true end
     end
-
     return false
 end
 
@@ -71,7 +71,7 @@ local function getClosestMob()
     return closest
 end
 
--- ================== AIM LOCK ==================
+-- ================== AIM ==================
 local function aimAtTarget(target)
     if not target then return end
     local part = target:FindFirstChild("Head") or target:FindFirstChild("HumanoidRootPart")
@@ -84,17 +84,24 @@ end
 local function isDangerous(mob)
     if not mob then return false end
 
+    if tick() - lastDodgeTime < 1.2 then
+        return false
+    end
+
     for _, v in ipairs(mob:GetDescendants()) do
+
         if v:IsA("Beam") and v.Enabled then
             lastSkillTick = tick()
+            lastDodgeTime = tick()
             return true
         end
 
         if v:IsA("ParticleEmitter") and v.Enabled then
             local parent = v.Parent
             if parent and parent:IsA("BasePart") then
-                if (parent.Position - root.Position).Magnitude < 100 then
+                if (parent.Position - root.Position).Magnitude < 50 then
                     lastSkillTick = tick()
+                    lastDodgeTime = tick()
                     return true
                 end
             end
@@ -102,11 +109,12 @@ local function isDangerous(mob)
 
         if v:IsA("Sound") and v.Playing then
             lastSkillTick = tick()
+            lastDodgeTime = tick()
             return true
         end
     end
 
-    if tick() - lastSkillTick < 1 then
+    if tick() - lastSkillTick < 0.6 then
         return true
     end
 
@@ -121,7 +129,6 @@ local function attack()
 
                 aimAtTarget(currentTarget)
 
-                -- M1
                 for i = 1,4 do
                     VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,1)
                     VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
@@ -129,7 +136,6 @@ local function attack()
 
                 aimAtTarget(currentTarget)
 
-                -- Skill
                 for _, key in ipairs({"Z","X","C","V"}) do
                     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
                     VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
@@ -156,28 +162,26 @@ local function startFarm()
         if not hrp then return end
 
         currentTarget = target
-
-        -- luôn aim
         aimAtTarget(currentTarget)
 
         if isDangerous(target) then
-            dodgeTime = 2.5
+            dodgeTime = 1.2
         end
 
         if dodgeTime > 0 then
-            currentAngle = currentAngle - 12 * dt
+            currentAngle = currentAngle - 10 * dt
 
             local offset = Vector3.new(
-                math.cos(currentAngle) * 90,
+                math.cos(currentAngle) * 170,
                 140,
-                math.sin(currentAngle) * 90
+                math.sin(currentAngle) * 170
             )
 
             local pos = hrp.Position + offset
 
             root.CFrame = root.CFrame:Lerp(
                 CFrame.new(pos, hrp.Position),
-                0.8
+                0.75
             )
 
             dodgeTime = dodgeTime - dt
@@ -192,7 +196,7 @@ local function startFarm()
         end
     end)
 
-    print("🔥 FINAL: AIM LOCK + PERFECT DODGE + 7M")
+    print("🔥 FINAL: STABLE FARM + SMART DODGE 170M")
 end
 
 UserInputService.InputBegan:Connect(function(input, gp)
