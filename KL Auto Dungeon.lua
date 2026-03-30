@@ -1,4 +1,4 @@
--- // KING LEGACY - FINAL 7M + ONLY DODGE SPIN
+-- // KING LEGACY - FINAL FIX NO SPAM DODGE
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -14,6 +14,7 @@ local farming = false
 local currentTarget = nil
 local currentAngle = 0
 local dodgeTime = 0
+local lastDodge = 0
 
 -- ================== MOB LIST ==================
 local dungeonMobNames = {
@@ -69,25 +70,32 @@ local function getClosestMob()
     return closest
 end
 
--- ================== DETECT SKILL ==================
+-- ================== DETECT SKILL (FIXED) ==================
 local function isDangerous(mob)
     if not mob then return false end
 
+    -- cooldown né
+    if tick() - lastDodge < 0.8 then
+        return false
+    end
+
     for _, v in ipairs(mob:GetDescendants()) do
-        if v:IsA("Beam") then return true end
+        if v:IsA("Beam") then
+            local a1 = v.Attachment1
+            if a1 and (a1.WorldPosition - root.Position).Magnitude < 60 then
+                lastDodge = tick()
+                return true
+            end
+        end
 
         if v:IsA("ParticleEmitter") and v.Enabled then
             local parent = v.Parent
             if parent and parent:IsA("BasePart") then
-                if (parent.Position - root.Position).Magnitude < 60 then
+                if (parent.Position - root.Position).Magnitude < 40 then
+                    lastDodge = tick()
                     return true
                 end
             end
-        end
-
-        local n = v.Name:lower()
-        if n:find("skill") or n:find("ultimate") or n:find("attack") then
-            return true
         end
     end
 
@@ -135,13 +143,13 @@ local function startFarm()
 
         currentTarget = target
 
-        -- detect skill
-        if isDangerous(target) then
-            dodgeTime = 3
+        -- chỉ kích hoạt né khi cần
+        if isDangerous(target) and dodgeTime <= 0 then
+            dodgeTime = 2
         end
 
         if dodgeTime > 0 then
-            -- 🛡️ CHỈ LÚC NÉ MỚI QUAY
+            -- né
             currentAngle = currentAngle - 14 * dt
 
             local offset = Vector3.new(
@@ -160,7 +168,7 @@ local function startFarm()
             dodgeTime = dodgeTime - dt
 
         else
-            -- ⚔️ FARM ĐỨNG YÊN +7M (KHÔNG QUAY)
+            -- farm đứng yên +7m
             local pos = hrp.Position + Vector3.new(0, 7, 0)
 
             root.CFrame = CFrame.new(pos, hrp.Position)
@@ -170,7 +178,7 @@ local function startFarm()
         end
     end)
 
-    print("🔥 FINAL: 7M HEAD LOCK + ONLY DODGE SPIN")
+    print("🔥 FINAL: FIX DODGE + 7M HEAD LOCK WORKING")
 end
 
 UserInputService.InputBegan:Connect(function(input, gp)
