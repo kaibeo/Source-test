@@ -1,4 +1,4 @@
--- // KING LEGACY - FULL FARM MAX SPEED + AUTO DODGE 70M + FULL MOB
+-- // KING LEGACY - FULL FARM FINAL (NO PLAYER TARGET)
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -29,35 +29,51 @@ local dungeonMobNames = {
     "mike","bomb","shock"
 }
 
+-- ================== CHECK PLAYER ==================
+local function isPlayerCharacter(model)
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr.Character == model then
+            return true
+        end
+    end
+    return false
+end
+
+-- ================== MOB CHECK ==================
 local function isDungeonMob(mob)
     if not mob or not mob:FindFirstChild("Humanoid") then return false end
     if mob.Humanoid.Health <= 0 then return false end
+
+    -- ❌ loại player
+    if isPlayerCharacter(mob) then return false end
     if mob == character then return false end
+
+    if not mob:FindFirstChild("HumanoidRootPart") then return false end
 
     local name = mob.Name:lower()
 
+    -- ✅ chỉ lấy mob trong list
     for _, v in ipairs(dungeonMobNames) do
         if name:find(v) then
             return true
         end
     end
 
-    -- fallback (tránh miss)
-    if mob:FindFirstChild("HumanoidRootPart") then
-        return true
-    end
-
     return false
 end
 
+-- ================== GET TARGET ==================
 local function getClosestMob()
     local closest, dist = nil, math.huge
     for _, v in ipairs(Workspace:GetDescendants()) do
-        if v:IsA("Model") and isDungeonMob(v) and v:FindFirstChild("HumanoidRootPart") then
-            local d = (root.Position - v.HumanoidRootPart.Position).Magnitude
-            if d < dist then
-                dist = d
-                closest = v
+        if v:IsA("Model") and isDungeonMob(v) then
+            local hrp = v:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local d = (root.Position - hrp.Position).Magnitude
+                if d < dist then
+                    dist = d
+                    closest = v
+                end
             end
         end
     end
@@ -89,7 +105,7 @@ local function attack()
             if currentTarget and currentTarget:FindFirstChild("HumanoidRootPart") then
                 local hrp = currentTarget.HumanoidRootPart
 
-                -- aim chuẩn
+                -- aim
                 root.CFrame = CFrame.new(root.Position, hrp.Position)
 
                 -- ⚡ M1 MAX SPEED
@@ -98,7 +114,7 @@ local function attack()
                     VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
                 end
 
-                -- ⚡ Skill spam nhanh
+                -- ⚡ skill spam
                 for _, key in ipairs({"Z","X","C","V"}) do
                     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
                     VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
@@ -119,10 +135,12 @@ local function startFarm()
         if not farming then return end
 
         local target = getClosestMob()
-        if not target or not target:FindFirstChild("HumanoidRootPart") then return end
+        if not target then return end
+
+        local hrp = target:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
 
         currentTarget = target
-        local hrp = target.HumanoidRootPart
 
         -- reset khi đổi target
         if target ~= lastTarget then
@@ -130,7 +148,7 @@ local function startFarm()
             lastTarget = target
         end
 
-        -- detect skill → né
+        -- detect skill
         if isDangerous(target) then
             dodgeTime = 2
         end
@@ -139,7 +157,7 @@ local function startFarm()
         local radius = 6
         local speed = 4
 
-        -- 🛡️ né skill → bay 70m
+        -- 🛡️ né skill
         if dodgeTime > 0 then
             height = 70
             radius = 15
@@ -157,14 +175,14 @@ local function startFarm()
 
         local targetPos = hrp.Position + offset
 
-        -- 🚀 bay mượt nhanh (không TP giật)
+        -- 🚀 bay mượt
         root.CFrame = root.CFrame:Lerp(
             CFrame.new(targetPos, hrp.Position),
             0.5
         )
     end)
 
-    print("🔥 FULL FARM: MAX SPEED + DODGE 70M + NO MISS MOB")
+    print("🔥 FARM FINAL: KHÔNG ĐÁNH NGƯỜI + MAX SPEED + DODGE 70M")
 end
 
 local function stopFarm()
