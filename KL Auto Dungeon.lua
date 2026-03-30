@@ -1,4 +1,4 @@
--- // KING LEGACY - FINAL GOD MODE FARM
+-- // KING LEGACY - FINAL FIX +5M HEAD LOCK
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -12,7 +12,6 @@ local root = character:WaitForChild("HumanoidRootPart")
 
 local farming = false
 local currentTarget = nil
-local lastTarget = nil
 local currentAngle = 0
 local dodgeTime = 0
 
@@ -43,17 +42,13 @@ end
 local function isDungeonMob(mob)
     if not mob or not mob:FindFirstChild("Humanoid") then return false end
     if mob.Humanoid.Health <= 0 then return false end
-
     if isPlayerCharacter(mob) then return false end
     if mob == character then return false end
     if not mob:FindFirstChild("HumanoidRootPart") then return false end
 
     local name = mob.Name:lower()
-
     for _, v in ipairs(dungeonMobNames) do
-        if name:find(v) then
-            return true
-        end
+        if name:find(v) then return true end
     end
 
     return false
@@ -98,16 +93,15 @@ local function attack()
             if currentTarget and currentTarget:FindFirstChild("HumanoidRootPart") then
                 local hrp = currentTarget.HumanoidRootPart
 
-                -- aim
                 root.CFrame = CFrame.new(root.Position, hrp.Position)
 
-                -- ⚡ M1 MAX SPEED
+                -- M1 nhanh
                 for i = 1,4 do
                     VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,1)
                     VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
                 end
 
-                -- ⚡ skill spam
+                -- Skill nhanh
                 for _, key in ipairs({"Z","X","C","V"}) do
                     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
                     VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
@@ -135,12 +129,11 @@ local function startFarm()
 
         currentTarget = target
 
-        -- detect skill
+        -- detect skill → luôn né
         if isDangerous(target) then
             dodgeTime = 2.5
         end
 
-        -- 🛡️ NÉ
         if dodgeTime > 0 then
             currentAngle = currentAngle - 12 * dt
 
@@ -160,8 +153,8 @@ local function startFarm()
             dodgeTime = dodgeTime - dt
 
         else
-            -- 🔒 HARD LOCK TRÊN ĐẦU
-            local pos = hrp.Position + Vector3.new(0, 2, 0)
+            -- 🔥 đứng trên đầu +5m
+            local pos = hrp.Position + Vector3.new(0, 5, 0)
 
             root.CFrame = CFrame.new(pos, hrp.Position)
 
@@ -171,20 +164,15 @@ local function startFarm()
         end
     end)
 
-    print("🔥 FINAL GOD MODE: HARD LOCK + NO PLAYER + MAX SPEED")
+    print("🔥 FARM +5M HEAD LOCK + AUTO DODGE ON")
 end
 
-local function stopFarm()
-    farming = false
-end
-
--- toggle F
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.KeyCode == Enum.KeyCode.F then
-        if farming then stopFarm() else startFarm() end
+        farming = not farming
+        if farming then startFarm() end
     end
 end)
 
--- auto start
 startFarm()
