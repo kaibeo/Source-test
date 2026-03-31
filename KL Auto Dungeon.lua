@@ -1,9 +1,5 @@
--- // KING LEGACY - FULL SCRIPT (UI + FARM + AIM + DODGE)
+-- // KING LEGACY - FINAL SMART FARM + PERFECT DODGE
 
--- ================== LOAD UI ==================
-local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/source.lua"))()
-
--- ================== SERVICES ==================
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
@@ -15,11 +11,12 @@ local character = player.Character or player.CharacterAdded:Wait()
 local root = character:WaitForChild("HumanoidRootPart")
 
 -- ================== STATE ==================
-local farming = false
+local farming = true
 local currentTarget = nil
 local currentAngle = 0
 local dodgeTime = 0
 local lastDodgeTime = 0
+local lastSkillTick = 0
 
 -- ================== MOB LIST ==================
 local dungeonMobNames = {
@@ -74,153 +71,123 @@ local function aimAtTarget(target)
     end
 end
 
--- ================== DETECT SKILL ==================
+-- ================== SMART DODGE ==================
 local function isDangerous(mob)
     if not mob then return false end
 
-    if tick() - lastDodgeTime < 1.2 then
+    if tick() - lastDodgeTime < 1.0 then
         return false
     end
 
     for _, v in ipairs(mob:GetDescendants()) do
-        if (v:IsA("Beam") and v.Enabled) or
-           (v:IsA("ParticleEmitter") and v.Enabled) or
-           (v:IsA("Sound") and v.Playing) then
+
+        if v:IsA("Beam") and v.Enabled then
             lastDodgeTime = tick()
+            lastSkillTick = tick()
             return true
         end
+
+        if v:IsA("ParticleEmitter") and v.Enabled then
+            local parent = v.Parent
+            if parent and parent:IsA("BasePart") then
+                local dist = (parent.Position - root.Position).Magnitude
+                if dist < 60 then
+                    lastDodgeTime = tick()
+                    lastSkillTick = tick()
+                    return true
+                end
+            end
+        end
+
+        if v:IsA("Sound") and v.Playing then
+            lastDodgeTime = tick()
+            lastSkillTick = tick()
+            return true
+        end
+    end
+
+    if tick() - lastSkillTick < 0.5 then
+        return true
     end
 
     return false
 end
 
 -- ================== ATTACK ==================
-local function attackLoop()
-    spawn(function()
-        while farming do
-            if currentTarget and currentTarget:FindFirstChild("HumanoidRootPart") then
+spawn(function()
+    while true do
+        if farming and currentTarget and currentTarget:FindFirstChild("HumanoidRootPart") then
 
-                aimAtTarget(currentTarget)
+            aimAtTarget(currentTarget)
 
-                -- M1
-                for i = 1,3 do
-                    VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,1)
-                    VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
-                end
-
-                aimAtTarget(currentTarget)
-
-                -- Skills
-                for _, key in ipairs({"Z","X","C","V"}) do
-                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
-                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
-                end
+            for i = 1,3 do
+                VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,1)
+                VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
             end
-            task.wait(0.04)
+
+            aimAtTarget(currentTarget)
+
+            for _, key in ipairs({"Z","X","C","V"}) do
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
+            end
         end
-    end)
-end
-
--- ================== FARM ==================
-local heartbeatConn
-local function startFarm()
-    if farming then return end
-    farming = true
-    attackLoop()
-
-    heartbeatConn = RunService.Heartbeat:Connect(function(dt)
-        if not farming then return end
-
-        local target = getClosestMob()
-        if not target then return end
-
-        local hrp = target:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-
-        currentTarget = target
-        aimAtTarget(currentTarget)
-
-        -- detect skill
-        if isDangerous(target) then
-            dodgeTime = 1.2
-        end
-
-        if dodgeTime > 0 then
-            currentAngle = currentAngle - 10 * dt
-
-            local offset = Vector3.new(
-                math.cos(currentAngle) * 170,
-                140,
-                math.sin(currentAngle) * 170
-            )
-
-            local pos = hrp.Position + offset
-
-            root.CFrame = root.CFrame:Lerp(
-                CFrame.new(pos, hrp.Position),
-                0.75
-            )
-
-            dodgeTime = dodgeTime - dt
-
-        else
-            -- đứng trên đầu +7m
-            local pos = hrp.Position + Vector3.new(0, 7, 0)
-
-            root.CFrame = CFrame.new(pos, hrp.Position)
-
-            root.Velocity = Vector3.zero
-            root.AssemblyLinearVelocity = Vector3.zero
-        end
-    end)
-end
-
-local function stopFarm()
-    farming = false
-    if heartbeatConn then
-        heartbeatConn:Disconnect()
-        heartbeatConn = nil
+        task.wait(0.04)
     end
-    currentTarget = nil
-end
+end)
 
--- ================== UI ==================
-local Window = library:CreateWindow({
-    Title = "King Legacy Farm",
-    Theme = "Dark",
-    Size = UDim2.fromOffset(500, 300)
-})
+-- ================== MAIN ==================
+RunService.Heartbeat:Connect(function(dt)
+    if not farming then return end
 
-local Tab = Window:CreateTab("Dungeon Farm")
+    local target = getClosestMob()
+    if not target then return end
 
-Tab:CreateToggle({
-    Title = "🚀 Bật Farm",
-    Description = "Farm + Né skill + Aim lock",
-    Default = false,
-    Callback = function(state)
-        if state then startFarm() else stopFarm() end
+    local hrp = target:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    currentTarget = target
+    aimAtTarget(currentTarget)
+
+    if isDangerous(target) then
+        dodgeTime = 1.2
     end
-})
 
-Tab:CreateButton({
-    Title = "Toggle (F)",
-    Callback = function()
-        farming = not farming
-        if farming then startFarm() else stopFarm() end
+    if dodgeTime > 0 then
+        currentAngle = currentAngle - 10 * dt
+
+        local offset = Vector3.new(
+            math.cos(currentAngle) * 170,
+            140,
+            math.sin(currentAngle) * 170
+        )
+
+        local pos = hrp.Position + offset
+
+        root.CFrame = root.CFrame:Lerp(
+            CFrame.new(pos, hrp.Position),
+            0.75
+        )
+
+        dodgeTime = dodgeTime - dt
+
+    else
+        local pos = hrp.Position + Vector3.new(0, 7, 0)
+
+        root.CFrame = CFrame.new(pos, hrp.Position)
+
+        root.Velocity = Vector3.zero
+        root.AssemblyLinearVelocity = Vector3.zero
     end
-})
+end)
 
-Tab:CreateLabel("✔ Farm +7m trên đầu quái")
-Tab:CreateLabel("✔ Né skill 140m / 170m")
-Tab:CreateLabel("✔ Aim lock 100%")
-
--- ================== KEY ==================
+-- ================== TOGGLE ==================
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.KeyCode == Enum.KeyCode.F then
         farming = not farming
-        if farming then startFarm() else stopFarm() end
+        print("Farm:", farming)
     end
 end)
 
-print("🔥 SCRIPT FULL ĐÃ LOAD!")
+print("🔥 FINAL SMART FARM + DODGE READY")
