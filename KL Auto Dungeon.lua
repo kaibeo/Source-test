@@ -1,4 +1,4 @@
--- // KING LEGACY - PRO MAX REBUILD
+-- // KING LEGACY - HYBRID MAX (FAST + STABLE + DPS MAX)
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -19,16 +19,16 @@ local lastControlZ = 0
 local angle = 0
 
 -- ================= TOOL =================
-local function getTool(name)
+local function getTool(keyword)
     for _,v in ipairs(player.Backpack:GetChildren()) do
-        if v:IsA("Tool") and v.Name:lower():find(name) then
+        if v:IsA("Tool") and v.Name:lower():find(keyword) then
             return v
         end
     end
 end
 
 local function equip(tool)
-    if tool then
+    if tool and tool.Parent ~= char then
         humanoid:EquipTool(tool)
         task.wait(0.12)
     end
@@ -42,23 +42,23 @@ local function aim()
 end
 
 -- ================= SKILL =================
-local function press(key, hold)
+local function press(key)
     VirtualInputManager:SendKeyEvent(true,key,false,game)
-    task.wait(hold or 0.08)
+    task.wait(0.09) -- ⚡ tối ưu
     VirtualInputManager:SendKeyEvent(false,key,false,game)
 end
 
 -- ================= DODGE =================
 local function dangerous(mob)
-    if tick() - lastDodge < 1 then return false end
+    if tick()-lastDodge<1 then return false end
 
     for _,v in ipairs(mob:GetDescendants()) do
         if v:IsA("Beam") and v.Enabled then return true end
 
         if v:IsA("ParticleEmitter") and v.Enabled then
-            local p = v.Parent
+            local p=v.Parent
             if p and p:IsA("BasePart") then
-                if (p.Position - root.Position).Magnitude < 70 then
+                if (p.Position-root.Position).Magnitude<65 then
                     return true
                 end
             end
@@ -82,13 +82,14 @@ end
 spawn(function()
     while true do
         if farming and target and dodgeTime<=0 then
-            local tool = char:FindFirstChildOfClass("Tool")
+            local tool=char:FindFirstChildOfClass("Tool")
             if tool and tool.Name:lower():find("kioru") then
                 VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,1)
+                task.wait(0.015)
                 VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
             end
         end
-        task.wait(0.01)
+        task.wait(0.015)
     end
 end)
 
@@ -100,14 +101,14 @@ spawn(function()
             aim()
 
             -- 🍇 FRUIT
-            local fruit = getTool("fruit") or getTool("control")
+            local fruit=getTool("fruit") or getTool("control")
             if fruit then
                 equip(fruit)
                 aim()
 
                 if tostring(player.Data.DevilFruit.Value):lower():find("control") then
                     if tick()-lastControlZ>60 then
-                        press(Enum.KeyCode.Z,0.15)
+                        press(Enum.KeyCode.Z)
                         lastControlZ=tick()
                     end
                 end
@@ -118,10 +119,10 @@ spawn(function()
                 press(Enum.KeyCode.B)
             end
 
-            task.wait(0.25)
+            task.wait(0.22)
 
             -- ⚔️ SWORD
-            local sword = getTool("kioru")
+            local sword=getTool("kioru")
             if sword then
                 equip(sword)
                 aim()
@@ -130,7 +131,7 @@ spawn(function()
                 press(Enum.KeyCode.X)
             end
 
-            task.wait(0.25)
+            task.wait(0.22)
         end
         task.wait(0.03)
     end
@@ -140,31 +141,33 @@ end)
 RunService.Heartbeat:Connect(function(dt)
     if not farming then return end
 
-    target = getMob()
+    target=getMob()
     if not target then return end
 
     aim()
 
     if dangerous(target) then
-        dodgeTime = 1.2
-        lastDodge = tick()
+        dodgeTime=1.1
+        lastDodge=tick()
     end
 
     if dodgeTime>0 then
-        angle -= 8*dt
+        angle-=7*dt
 
-        local pos = target.HumanoidRootPart.Position + Vector3.new(
-            math.cos(angle)*140,
-            100,
-            math.sin(angle)*140
+        local pos=target.HumanoidRootPart.Position+Vector3.new(
+            math.cos(angle)*130,
+            95,
+            math.sin(angle)*130
         )
 
-        root.CFrame = CFrame.new(pos,target.HumanoidRootPart.Position)
-        dodgeTime -= dt
+        root.CFrame=CFrame.new(pos,target.HumanoidRootPart.Position)
+        dodgeTime-=dt
     else
-        root.CFrame = CFrame.new(target.HumanoidRootPart.Position + Vector3.new(0,7,0),
-        target.HumanoidRootPart.Position)
+        root.CFrame=CFrame.new(
+            target.HumanoidRootPart.Position+Vector3.new(0,7,0),
+            target.HumanoidRootPart.Position
+        )
     end
 end)
 
-print("🔥 PRO MAX REBUILD READY")
+print("🔥 HYBRID MAX READY (FAST + STABLE + DPS)")
