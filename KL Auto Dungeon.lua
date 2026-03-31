@@ -1,4 +1,4 @@
--- // KING LEGACY - FINAL SMART FARM + PERFECT DODGE
+-- // KING LEGACY - FINAL PRO SCRIPT
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -17,8 +17,9 @@ local currentAngle = 0
 local dodgeTime = 0
 local lastDodgeTime = 0
 local lastSkillTick = 0
+local lastControlZ = 0
 
--- ================== MOB LIST ==================
+-- ================== MOB ==================
 local dungeonMobNames = {
     "imprisoned pirate","pirate gunner","bloodbound pirate",
     "imprisoned angel","imprisoned demon",
@@ -30,7 +31,6 @@ local dungeonMobNames = {
     "chaos crab","craberno","mike","bomb","shock"
 }
 
--- ================== CHECK MOB ==================
 local function isDungeonMob(mob)
     if not mob or not mob:FindFirstChild("Humanoid") then return false end
     if mob.Humanoid.Health <= 0 then return false end
@@ -44,7 +44,6 @@ local function isDungeonMob(mob)
     return false
 end
 
--- ================== GET TARGET ==================
 local function getClosestMob()
     local closest, dist = nil, math.huge
     for _, v in ipairs(Workspace:GetDescendants()) do
@@ -63,76 +62,79 @@ local function getClosestMob()
 end
 
 -- ================== AIM ==================
-local function aimAtTarget(target)
+local function aimLock(target)
     if not target then return end
-    local part = target:FindFirstChild("Head") or target:FindFirstChild("HumanoidRootPart")
-    if part then
-        root.CFrame = CFrame.new(root.Position, part.Position)
+    local hrp = target:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        root.CFrame = CFrame.new(root.Position, hrp.Position)
     end
 end
 
--- ================== SMART DODGE ==================
+-- ================== EQUIP ==================
+local function equipTool(keyword)
+    for _, tool in ipairs(player.Backpack:GetChildren()) do
+        if tool:IsA("Tool") and tool.Name:lower():find(keyword) then
+            character.Humanoid:EquipTool(tool)
+            return true
+        end
+    end
+end
+
+-- ================== DODGE ==================
 local function isDangerous(mob)
     if not mob then return false end
-
-    if tick() - lastDodgeTime < 1.0 then
-        return false
-    end
+    if tick() - lastDodgeTime < 1 then return false end
 
     for _, v in ipairs(mob:GetDescendants()) do
-
-        if v:IsA("Beam") and v.Enabled then
-            lastDodgeTime = tick()
-            lastSkillTick = tick()
-            return true
-        end
-
-        if v:IsA("ParticleEmitter") and v.Enabled then
-            local parent = v.Parent
-            if parent and parent:IsA("BasePart") then
-                local dist = (parent.Position - root.Position).Magnitude
-                if dist < 60 then
-                    lastDodgeTime = tick()
-                    lastSkillTick = tick()
-                    return true
-                end
-            end
-        end
-
-        if v:IsA("Sound") and v.Playing then
+        if (v:IsA("Beam") and v.Enabled) or
+           (v:IsA("ParticleEmitter") and v.Enabled) or
+           (v:IsA("Sound") and v.Playing) then
             lastDodgeTime = tick()
             lastSkillTick = tick()
             return true
         end
     end
 
-    if tick() - lastSkillTick < 0.5 then
-        return true
-    end
-
+    if tick() - lastSkillTick < 0.5 then return true end
     return false
 end
 
--- ================== ATTACK ==================
+-- ================== COMBO LOOP ==================
 spawn(function()
     while true do
-        if farming and currentTarget and currentTarget:FindFirstChild("HumanoidRootPart") then
+        if farming and currentTarget then
 
-            aimAtTarget(currentTarget)
+            aimLock(currentTarget)
 
-            for i = 1,3 do
-                VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,1)
-                VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
+            -- 🔵 FRUIT
+            equipTool("fruit")
+
+            if tostring(player.Data.DevilFruit.Value):lower():find("control") then
+                if tick() - lastControlZ > 60 then
+                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Z, false, game)
+                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Z, false, game)
+                    lastControlZ = tick()
+                end
             end
 
-            aimAtTarget(currentTarget)
-
-            for _, key in ipairs({"Z","X","C","V"}) do
+            for _, key in ipairs({"X","C","V","B"}) do
                 VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
                 VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
             end
+
+            task.wait(0.2)
+
+            -- ⚔️ SWORD
+            equipTool("sword")
+
+            for _, key in ipairs({"Z","X"}) do
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
+            end
+
+            task.wait(0.2)
         end
-        task.wait(0.04)
+        task.wait(0.05)
     end
 end)
 
@@ -147,7 +149,7 @@ RunService.Heartbeat:Connect(function(dt)
     if not hrp then return end
 
     currentTarget = target
-    aimAtTarget(currentTarget)
+    aimLock(currentTarget)
 
     if isDangerous(target) then
         dodgeTime = 1.2
@@ -162,20 +164,11 @@ RunService.Heartbeat:Connect(function(dt)
             math.sin(currentAngle) * 170
         )
 
-        local pos = hrp.Position + offset
-
-        root.CFrame = root.CFrame:Lerp(
-            CFrame.new(pos, hrp.Position),
-            0.75
-        )
-
+        root.CFrame = CFrame.new(hrp.Position + offset, hrp.Position)
         dodgeTime = dodgeTime - dt
 
     else
-        local pos = hrp.Position + Vector3.new(0, 7, 0)
-
-        root.CFrame = CFrame.new(pos, hrp.Position)
-
+        root.CFrame = CFrame.new(hrp.Position + Vector3.new(0,7,0), hrp.Position)
         root.Velocity = Vector3.zero
         root.AssemblyLinearVelocity = Vector3.zero
     end
@@ -190,4 +183,4 @@ UserInputService.InputBegan:Connect(function(input, gp)
     end
 end)
 
-print("🔥 FINAL SMART FARM + DODGE READY")
+print("🔥 FINAL SCRIPT READY (CONTROL 60s + LOOP COMBO)")
