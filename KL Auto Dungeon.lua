@@ -1,4 +1,4 @@
--- // KING LEGACY - FINAL PRO SCRIPT
+-- // KING LEGACY - FINAL FIX ALL (NO SKILL WHEN DODGE)
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -99,10 +99,16 @@ local function isDangerous(mob)
     return false
 end
 
--- ================== COMBO LOOP ==================
+-- ================== COMBO ==================
 spawn(function()
     while true do
         if farming and currentTarget then
+
+            -- 🛡️ ĐANG NÉ → DỪNG
+            if dodgeTime > 0 then
+                task.wait(0.05)
+                continue
+            end
 
             aimLock(currentTarget)
 
@@ -123,6 +129,9 @@ spawn(function()
             end
 
             task.wait(0.2)
+
+            -- nếu giữa chừng bị né → dừng
+            if dodgeTime > 0 then continue end
 
             -- ⚔️ SWORD
             equipTool("sword")
@@ -183,4 +192,4 @@ UserInputService.InputBegan:Connect(function(input, gp)
     end
 end)
 
-print("🔥 FINAL SCRIPT READY (CONTROL 60s + LOOP COMBO)")
+print("🔥 FINAL FIXED SCRIPT READY")
