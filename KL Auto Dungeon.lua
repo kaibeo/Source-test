@@ -1,4 +1,4 @@
--- // KING LEGACY - FINAL FIX ALL (NO SKILL WHEN DODGE)
+-- // KING LEGACY - FULL FIX FINAL (M1 + SKILL + KIORU V2)
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -8,6 +8,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
 local root = character:WaitForChild("HumanoidRootPart")
 
 -- ================== STATE ==================
@@ -16,8 +17,35 @@ local currentTarget = nil
 local currentAngle = 0
 local dodgeTime = 0
 local lastDodgeTime = 0
-local lastSkillTick = 0
 local lastControlZ = 0
+
+-- ================== TOOL ==================
+local function getToolByType(typeName)
+    for _, tool in ipairs(player.Backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            local n = tool.Name:lower()
+
+            if typeName == "fruit" then
+                if n:find("fruit") or n:find("control") then
+                    return tool
+                end
+            end
+
+            if typeName == "sword" then
+                if n:find("kioru") or n:find("katana") or n:find("sword") then
+                    return tool
+                end
+            end
+        end
+    end
+end
+
+local function equip(tool)
+    if tool then
+        humanoid:EquipTool(tool)
+        task.wait(0.12)
+    end
+end
 
 -- ================== MOB ==================
 local dungeonMobNames = {
@@ -62,20 +90,11 @@ local function getClosestMob()
 end
 
 -- ================== AIM ==================
-local function aimLock(target)
-    if not target then return end
-    local hrp = target:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        root.CFrame = CFrame.new(root.Position, hrp.Position)
-    end
-end
-
--- ================== EQUIP ==================
-local function equipTool(keyword)
-    for _, tool in ipairs(player.Backpack:GetChildren()) do
-        if tool:IsA("Tool") and tool.Name:lower():find(keyword) then
-            character.Humanoid:EquipTool(tool)
-            return true
+local function aim(target)
+    if target then
+        local hrp = target:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            root.CFrame = CFrame.new(root.Position, hrp.Position)
         end
     end
 end
@@ -86,64 +105,78 @@ local function isDangerous(mob)
     if tick() - lastDodgeTime < 1 then return false end
 
     for _, v in ipairs(mob:GetDescendants()) do
-        if (v:IsA("Beam") and v.Enabled) or
-           (v:IsA("ParticleEmitter") and v.Enabled) or
-           (v:IsA("Sound") and v.Playing) then
+        if (v:IsA("Beam") and v.Enabled)
+        or (v:IsA("ParticleEmitter") and v.Enabled)
+        or (v:IsA("Sound") and v.Playing) then
             lastDodgeTime = tick()
-            lastSkillTick = tick()
             return true
         end
     end
 
-    if tick() - lastSkillTick < 0.5 then return true end
     return false
 end
 
--- ================== COMBO ==================
+-- ================== ATTACK ==================
 spawn(function()
     while true do
         if farming and currentTarget then
 
-            -- 🛡️ ĐANG NÉ → DỪNG
             if dodgeTime > 0 then
                 task.wait(0.05)
-                continue
-            end
+            else
 
-            aimLock(currentTarget)
+                aim(currentTarget)
 
-            -- 🔵 FRUIT
-            equipTool("fruit")
+                -- 🔵 FRUIT
+                local fruit = getToolByType("fruit")
+                if fruit then
+                    equip(fruit)
 
-            if tostring(player.Data.DevilFruit.Value):lower():find("control") then
-                if tick() - lastControlZ > 60 then
-                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Z, false, game)
-                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Z, false, game)
-                    lastControlZ = tick()
+                    aim(currentTarget)
+
+                    -- Control Z (60s)
+                    if tostring(player.Data.DevilFruit.Value):lower():find("control") then
+                        if tick() - lastControlZ > 60 then
+                            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Z, false, game)
+                            task.wait(0.1)
+                            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Z, false, game)
+                            lastControlZ = tick()
+                        end
+                    end
+
+                    for _, key in ipairs({"X","C","V","B"}) do
+                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
+                        task.wait(0.1)
+                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
+                    end
+                end
+
+                task.wait(0.2)
+
+                -- ⚔️ SWORD (KIORU V2)
+                local sword = getToolByType("sword")
+                if sword then
+                    equip(sword)
+
+                    aim(currentTarget)
+
+                    -- M1 spam
+                    for i = 1,6 do
+                        VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,1)
+                        task.wait(0.02)
+                        VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
+                    end
+
+                    -- skill
+                    for _, key in ipairs({"Z","X"}) do
+                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
+                        task.wait(0.1)
+                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
+                    end
                 end
             end
-
-            for _, key in ipairs({"X","C","V","B"}) do
-                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
-                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
-            end
-
-            task.wait(0.2)
-
-            -- nếu giữa chừng bị né → dừng
-            if dodgeTime > 0 then continue end
-
-            -- ⚔️ SWORD
-            equipTool("sword")
-
-            for _, key in ipairs({"Z","X"}) do
-                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
-                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
-            end
-
-            task.wait(0.2)
         end
-        task.wait(0.05)
+        task.wait(0.04)
     end
 end)
 
@@ -154,18 +187,15 @@ RunService.Heartbeat:Connect(function(dt)
     local target = getClosestMob()
     if not target then return end
 
-    local hrp = target:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
     currentTarget = target
-    aimLock(currentTarget)
+    aim(currentTarget)
 
     if isDangerous(target) then
         dodgeTime = 1.2
     end
 
     if dodgeTime > 0 then
-        currentAngle = currentAngle - 10 * dt
+        currentAngle -= 10 * dt
 
         local offset = Vector3.new(
             math.cos(currentAngle) * 170,
@@ -173,11 +203,10 @@ RunService.Heartbeat:Connect(function(dt)
             math.sin(currentAngle) * 170
         )
 
-        root.CFrame = CFrame.new(hrp.Position + offset, hrp.Position)
-        dodgeTime = dodgeTime - dt
-
+        root.CFrame = CFrame.new(target.HumanoidRootPart.Position + offset, target.HumanoidRootPart.Position)
+        dodgeTime -= dt
     else
-        root.CFrame = CFrame.new(hrp.Position + Vector3.new(0,7,0), hrp.Position)
+        root.CFrame = CFrame.new(target.HumanoidRootPart.Position + Vector3.new(0,7,0), target.HumanoidRootPart.Position)
         root.Velocity = Vector3.zero
         root.AssemblyLinearVelocity = Vector3.zero
     end
@@ -192,4 +221,4 @@ UserInputService.InputBegan:Connect(function(input, gp)
     end
 end)
 
-print("🔥 FINAL FIXED SCRIPT READY")
+print("🔥 FINAL SCRIPT MAX READY")
