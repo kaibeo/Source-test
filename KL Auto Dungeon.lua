@@ -1,4 +1,4 @@
--- // KING LEGACY - FULL FIX FINAL (M1 + SKILL + KIORU V2)
+-- // KING LEGACY - FINAL MAX (M1 CONTINUOUS + SKILL FAST)
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -43,7 +43,7 @@ end
 local function equip(tool)
     if tool then
         humanoid:EquipTool(tool)
-        task.wait(0.12)
+        task.wait(0.08)
     end
 end
 
@@ -99,6 +99,15 @@ local function aim(target)
     end
 end
 
+-- ================== FAST SKILL ==================
+local function fastSkill(key)
+    for i = 1,3 do
+        VirtualInputManager:SendKeyEvent(true, key, false, game)
+        task.wait(0.03)
+        VirtualInputManager:SendKeyEvent(false, key, false, game)
+    end
+end
+
 -- ================== DODGE ==================
 local function isDangerous(mob)
     if not mob then return false end
@@ -116,67 +125,57 @@ local function isDangerous(mob)
     return false
 end
 
+-- ================== M1 LOOP ==================
+spawn(function()
+    while true do
+        if farming and currentTarget and dodgeTime <= 0 then
+            local tool = character:FindFirstChildOfClass("Tool")
+            if tool and tool.Name:lower():find("kioru") then
+                VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,1)
+                VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
+            end
+        end
+        task.wait(0.01)
+    end
+end)
+
 -- ================== ATTACK ==================
 spawn(function()
     while true do
-        if farming and currentTarget then
+        if farming and currentTarget and dodgeTime <= 0 then
 
-            if dodgeTime > 0 then
-                task.wait(0.05)
-            else
+            aim(currentTarget)
 
+            -- 🔵 FRUIT
+            local fruit = getToolByType("fruit")
+            if fruit then
+                equip(fruit)
                 aim(currentTarget)
 
-                -- 🔵 FRUIT
-                local fruit = getToolByType("fruit")
-                if fruit then
-                    equip(fruit)
-
-                    aim(currentTarget)
-
-                    -- Control Z (60s)
-                    if tostring(player.Data.DevilFruit.Value):lower():find("control") then
-                        if tick() - lastControlZ > 60 then
-                            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Z, false, game)
-                            task.wait(0.1)
-                            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Z, false, game)
-                            lastControlZ = tick()
-                        end
-                    end
-
-                    for _, key in ipairs({"X","C","V","B"}) do
-                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
-                        task.wait(0.1)
-                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
+                if tostring(player.Data.DevilFruit.Value):lower():find("control") then
+                    if tick() - lastControlZ > 60 then
+                        fastSkill(Enum.KeyCode.Z)
+                        lastControlZ = tick()
                     end
                 end
 
-                task.wait(0.2)
+                fastSkill(Enum.KeyCode.X)
+                fastSkill(Enum.KeyCode.C)
+                fastSkill(Enum.KeyCode.V)
+                fastSkill(Enum.KeyCode.B)
+            end
 
-                -- ⚔️ SWORD (KIORU V2)
-                local sword = getToolByType("sword")
-                if sword then
-                    equip(sword)
+            -- ⚔️ SWORD
+            local sword = getToolByType("sword")
+            if sword then
+                equip(sword)
+                aim(currentTarget)
 
-                    aim(currentTarget)
-
-                    -- M1 spam
-                    for i = 1,6 do
-                        VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,1)
-                        task.wait(0.02)
-                        VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
-                    end
-
-                    -- skill
-                    for _, key in ipairs({"Z","X"}) do
-                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
-                        task.wait(0.1)
-                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
-                    end
-                end
+                fastSkill(Enum.KeyCode.Z)
+                fastSkill(Enum.KeyCode.X)
             end
         end
-        task.wait(0.04)
+        task.wait(0.02)
     end
 end)
 
@@ -221,4 +220,4 @@ UserInputService.InputBegan:Connect(function(input, gp)
     end
 end)
 
-print("🔥 FINAL SCRIPT MAX READY")
+print("🔥 MAX M1 + MAX SPEED READY")
