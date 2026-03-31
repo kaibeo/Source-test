@@ -1,4 +1,4 @@
--- // KING LEGACY - CONTINUOUS COMBO (XCVB + ZX + M1)
+-- // KING LEGACY - PRO MAX REBUILD
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -6,30 +6,23 @@ local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
-local root = character:WaitForChild("HumanoidRootPart")
+local char = player.Character or player.CharacterAdded:Wait()
+local humanoid = char:WaitForChild("Humanoid")
+local root = char:WaitForChild("HumanoidRootPart")
 
--- ================== STATE ==================
+-- ================= STATE =================
 local farming = true
-local currentTarget = nil
+local target = nil
 local dodgeTime = 0
-local currentAngle = 0
+local lastDodge = 0
 local lastControlZ = 0
+local angle = 0
 
--- ================== TOOL ==================
-local function getToolByType(typeName)
-    for _, tool in ipairs(player.Backpack:GetChildren()) do
-        if tool:IsA("Tool") then
-            local n = tool.Name:lower()
-
-            if typeName == "fruit" and (n:find("fruit") or n:find("control")) then
-                return tool
-            end
-
-            if typeName == "sword" and n:find("kioru") then
-                return tool
-            end
+-- ================= TOOL =================
+local function getTool(name)
+    for _,v in ipairs(player.Backpack:GetChildren()) do
+        if v:IsA("Tool") and v.Name:lower():find(name) then
+            return v
         end
     end
 end
@@ -37,49 +30,59 @@ end
 local function equip(tool)
     if tool then
         humanoid:EquipTool(tool)
-        task.wait(0.1)
+        task.wait(0.12)
     end
 end
 
--- ================== AIM ==================
-local function aim(target)
-    if target then
-        local hrp = target:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            root.CFrame = CFrame.new(root.Position, hrp.Position)
+-- ================= AIM =================
+local function aim()
+    if target and target:FindFirstChild("HumanoidRootPart") then
+        root.CFrame = CFrame.new(root.Position, target.HumanoidRootPart.Position)
+    end
+end
+
+-- ================= SKILL =================
+local function press(key, hold)
+    VirtualInputManager:SendKeyEvent(true,key,false,game)
+    task.wait(hold or 0.08)
+    VirtualInputManager:SendKeyEvent(false,key,false,game)
+end
+
+-- ================= DODGE =================
+local function dangerous(mob)
+    if tick() - lastDodge < 1 then return false end
+
+    for _,v in ipairs(mob:GetDescendants()) do
+        if v:IsA("Beam") and v.Enabled then return true end
+
+        if v:IsA("ParticleEmitter") and v.Enabled then
+            local p = v.Parent
+            if p and p:IsA("BasePart") then
+                if (p.Position - root.Position).Magnitude < 70 then
+                    return true
+                end
+            end
         end
     end
 end
 
--- ================== FAST SKILL ==================
-local function fastSkill(key)
-    for i = 1,2 do
-        VirtualInputManager:SendKeyEvent(true, key, false, game)
-        task.wait(0.04)
-        VirtualInputManager:SendKeyEvent(false, key, false, game)
+-- ================= TARGET =================
+local function getMob()
+    local closest,dist=nil,math.huge
+    for _,v in ipairs(Workspace:GetDescendants()) do
+        if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") then
+            local d=(root.Position-v.HumanoidRootPart.Position).Magnitude
+            if d<dist then dist=d closest=v end
+        end
     end
+    return closest
 end
 
--- ================== CONTROL Z ==================
-local function useControlZ()
-    if tick() - lastControlZ < 60 then return end
-
-    for i = 1,2 do
-        aim(currentTarget)
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Z, false, game)
-        task.wait(0.15)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Z, false, game)
-        task.wait(0.1)
-    end
-
-    lastControlZ = tick()
-end
-
--- ================== M1 LOOP ==================
+-- ================= M1 LOOP =================
 spawn(function()
     while true do
-        if farming and currentTarget and dodgeTime <= 0 then
-            local tool = character:FindFirstChildOfClass("Tool")
+        if farming and target and dodgeTime<=0 then
+            local tool = char:FindFirstChildOfClass("Tool")
             if tool and tool.Name:lower():find("kioru") then
                 VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,1)
                 VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
@@ -89,84 +92,79 @@ spawn(function()
     end
 end)
 
--- ================== COMBO LOOP ==================
+-- ================= COMBO =================
 spawn(function()
     while true do
-        if farming and currentTarget and dodgeTime <= 0 then
+        if farming and target and dodgeTime<=0 then
 
-            aim(currentTarget)
+            aim()
 
-            -- 🍇 FRUIT (XCVB liên tục)
-            local fruit = getToolByType("fruit")
+            -- 🍇 FRUIT
+            local fruit = getTool("fruit") or getTool("control")
             if fruit then
                 equip(fruit)
-                aim(currentTarget)
+                aim()
 
                 if tostring(player.Data.DevilFruit.Value):lower():find("control") then
-                    useControlZ()
+                    if tick()-lastControlZ>60 then
+                        press(Enum.KeyCode.Z,0.15)
+                        lastControlZ=tick()
+                    end
                 end
 
-                fastSkill(Enum.KeyCode.X)
-                fastSkill(Enum.KeyCode.C)
-                fastSkill(Enum.KeyCode.V)
-                fastSkill(Enum.KeyCode.B)
+                press(Enum.KeyCode.X)
+                press(Enum.KeyCode.C)
+                press(Enum.KeyCode.V)
+                press(Enum.KeyCode.B)
             end
 
-            task.wait(0.2)
+            task.wait(0.25)
 
-            -- ⚔️ SWORD (ZX liên tục)
-            local sword = getToolByType("sword")
+            -- ⚔️ SWORD
+            local sword = getTool("kioru")
             if sword then
                 equip(sword)
-                aim(currentTarget)
+                aim()
 
-                fastSkill(Enum.KeyCode.Z)
-                fastSkill(Enum.KeyCode.X)
+                press(Enum.KeyCode.Z)
+                press(Enum.KeyCode.X)
             end
 
-            task.wait(0.2)
+            task.wait(0.25)
         end
-        task.wait(0.02)
+        task.wait(0.03)
     end
 end)
 
--- ================== TARGET ==================
-local function getClosestMob()
-    local closest, dist = nil, math.huge
-    for _, v in ipairs(Workspace:GetDescendants()) do
-        if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") then
-            local d = (root.Position - v.HumanoidRootPart.Position).Magnitude
-            if d < dist then
-                dist = d
-                closest = v
-            end
-        end
-    end
-    return closest
-end
-
--- ================== MAIN ==================
+-- ================= MAIN =================
 RunService.Heartbeat:Connect(function(dt)
     if not farming then return end
 
-    local target = getClosestMob()
+    target = getMob()
     if not target then return end
 
-    currentTarget = target
-    aim(currentTarget)
+    aim()
 
-    if dodgeTime > 0 then
-        currentAngle -= 10 * dt
-        local offset = Vector3.new(
-            math.cos(currentAngle) * 170,
-            140,
-            math.sin(currentAngle) * 170
+    if dangerous(target) then
+        dodgeTime = 1.2
+        lastDodge = tick()
+    end
+
+    if dodgeTime>0 then
+        angle -= 8*dt
+
+        local pos = target.HumanoidRootPart.Position + Vector3.new(
+            math.cos(angle)*140,
+            100,
+            math.sin(angle)*140
         )
-        root.CFrame = CFrame.new(target.HumanoidRootPart.Position + offset, target.HumanoidRootPart.Position)
+
+        root.CFrame = CFrame.new(pos,target.HumanoidRootPart.Position)
         dodgeTime -= dt
     else
-        root.CFrame = CFrame.new(target.HumanoidRootPart.Position + Vector3.new(0,7,0), target.HumanoidRootPart.Position)
+        root.CFrame = CFrame.new(target.HumanoidRootPart.Position + Vector3.new(0,7,0),
+        target.HumanoidRootPart.Position)
     end
 end)
 
-print("🔥 CONTINUOUS COMBO READY (XCVB + ZX + M1)")
+print("🔥 PRO MAX REBUILD READY")
