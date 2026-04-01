@@ -1,9 +1,9 @@
--- // KING LEGACY - HYBRID MAX (FULL FIXED)
+-- // KING LEGACY - HYBRID MAX (FULL FIXED v2)
+-- ✅ Fruit dùng TRƯỚC Sword
 -- ✅ M1 + Skill chạy song song
--- ✅ Fruit dùng trước khi vào dungeon
+-- ✅ Z Control 60 giây/lần
 -- ✅ Lọc player, lọc mob chết
--- ✅ Auto respawn
--- ✅ GUI toggle
+-- ✅ Auto respawn + GUI
 -- Executor: Delta
 
 local Players             = game:GetService("Players")
@@ -99,14 +99,12 @@ local function getMob()
         if not v:FindFirstChild("HumanoidRootPart") then continue end
         if v == char then continue end
 
-        -- Bỏ qua player khác
         local isPlayer = false
         for _, p in ipairs(Players:GetPlayers()) do
             if p.Character == v then isPlayer = true; break end
         end
         if isPlayer then continue end
 
-        -- Bỏ qua mob đã chết
         local hum = v:FindFirstChildOfClass("Humanoid")
         if not hum or hum.Health <= 0 then continue end
 
@@ -121,7 +119,7 @@ local function getMob()
 end
 
 -- ===============================================
---   LOOP 1: M1 SPAM (chạy độc lập, không block)
+--   LOOP 1: M1 SPAM (độc lập, không block skill)
 -- ===============================================
 task.spawn(function()
     while true do
@@ -139,7 +137,7 @@ task.spawn(function()
 end)
 
 -- ===============================================
---   LOOP 2: SKILL (chạy độc lập, song song M1)
+--   LOOP 2: SKILL (Fruit TRƯỚC, Sword SAU)
 -- ===============================================
 task.spawn(function()
     while true do
@@ -149,7 +147,7 @@ task.spawn(function()
 
             aim()
 
-            -- ✅ FRUIT TRƯỚC (ưu tiên khi vào dungeon)
+            -- ✅ FRUIT TRƯỚC
             local fruit = getTool("fruit") or getTool("control")
             if fruit then
                 equip(fruit)
@@ -192,7 +190,7 @@ task.spawn(function()
 end)
 
 -- ===============================================
---        MAIN LOOP (Di chuyển + Dodge)
+--     MAIN LOOP (Di chuyển + Dodge)
 -- ===============================================
 RunService.RenderStepped:Connect(function(dt)
     if not farming then return end
@@ -230,7 +228,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 
 -- ===============================================
---                    GUI
+--                   GUI
 -- ===============================================
 local old = player.PlayerGui:FindFirstChild("KLFarmGUI")
 if old then old:Destroy() end
@@ -241,15 +239,16 @@ sg.ResetOnSpawn = false
 sg.Parent       = player.PlayerGui
 
 local frame = Instance.new("Frame")
-frame.Size             = UDim2.new(0, 210, 0, 100)
-frame.Position         = UDim2.new(0, 15, 0, 15)
-frame.BackgroundColor3 = Color3.fromRGB(12, 12, 20)
+frame.Size                   = UDim2.new(0, 210, 0, 100)
+frame.Position               = UDim2.new(0, 15, 0, 15)
+frame.BackgroundColor3       = Color3.fromRGB(12, 12, 20)
 frame.BackgroundTransparency = 0.05
-frame.BorderSizePixel  = 0
-frame.Active           = true
-frame.Draggable        = true
-frame.Parent           = sg
+frame.BorderSizePixel        = 0
+frame.Active                 = true
+frame.Draggable              = true
+frame.Parent                 = sg
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
+
 local st = Instance.new("UIStroke", frame)
 st.Color = Color3.fromRGB(255, 100, 0); st.Thickness = 1.5
 
@@ -257,7 +256,7 @@ st.Color = Color3.fromRGB(255, 100, 0); st.Thickness = 1.5
 local title = Instance.new("TextLabel")
 title.Size             = UDim2.new(1, 0, 0, 28)
 title.BackgroundColor3 = Color3.fromRGB(200, 60, 0)
-title.TextColor3       = Color3.new(1,1,1)
+title.TextColor3       = Color3.new(1, 1, 1)
 title.Text             = "👑  KING LEGACY FARM"
 title.TextScaled       = true
 title.Font             = Enum.Font.GothamBold
@@ -265,23 +264,23 @@ title.BorderSizePixel  = 0
 title.Parent           = frame
 Instance.new("UICorner", title).CornerRadius = UDim.new(0, 12)
 
--- Status label
+-- Status
 local statusLbl = Instance.new("TextLabel")
-statusLbl.Size             = UDim2.new(1,-10, 0, 22)
-statusLbl.Position         = UDim2.new(0, 5, 0, 32)
+statusLbl.Size                   = UDim2.new(1, -10, 0, 22)
+statusLbl.Position               = UDim2.new(0, 5, 0, 32)
 statusLbl.BackgroundTransparency = 1
-statusLbl.TextColor3       = Color3.fromRGB(180, 255, 180)
-statusLbl.Text             = "⭕ Đang dừng"
-statusLbl.TextScaled       = true
-statusLbl.Font             = Enum.Font.Gotham
-statusLbl.Parent           = frame
+statusLbl.TextColor3             = Color3.fromRGB(180, 255, 180)
+statusLbl.Text                   = "⭕ Đang dừng"
+statusLbl.TextScaled             = true
+statusLbl.Font                   = Enum.Font.Gotham
+statusLbl.Parent                 = frame
 
--- Toggle button
+-- Button
 local btn = Instance.new("TextButton")
 btn.Size             = UDim2.new(1, -10, 0, 34)
 btn.Position         = UDim2.new(0, 5, 0, 58)
 btn.BackgroundColor3 = Color3.fromRGB(40, 160, 40)
-btn.TextColor3       = Color3.new(1,1,1)
+btn.TextColor3       = Color3.new(1, 1, 1)
 btn.Text             = "▶  Bắt đầu Farm"
 btn.TextScaled       = true
 btn.Font             = Enum.Font.GothamBold
@@ -296,15 +295,14 @@ btn.MouseButton1Click:Connect(function()
         btn.Text             = "⏹  Dừng Farm"
         statusLbl.Text       = "🟢 Đang farm..."
 
-        -- ✅ Equip Fruit ngay lập tức khi bật farm
+        -- Equip Fruit ngay khi bật
         task.spawn(function()
             local fruit = getTool("fruit") or getTool("control")
             if fruit then
                 equip(fruit)
-                print("[KL] ✅ Đã equip Fruit - sẵn sàng!")
+                print("[KL] ✅ Đã equip Fruit!")
             end
         end)
-
     else
         btn.BackgroundColor3 = Color3.fromRGB(40, 160, 40)
         btn.Text             = "▶  Bắt đầu Farm"
@@ -325,9 +323,10 @@ task.spawn(function()
 end)
 
 print("╔══════════════════════════════╗")
-print("║  KING LEGACY HYBRID MAX      ║")
+print("║  KING LEGACY HYBRID MAX v2   ║")
+print("║  Fruit TRƯỚC Sword    ✅     ║")
 print("║  M1 + Skill song song ✅     ║")
-print("║  Fruit ưu tiên trước  ✅     ║")
+print("║  Z Control 60s/lần    ✅     ║")
 print("║  Auto Dodge + Respawn ✅     ║")
 print("╚══════════════════════════════╝")
 print("✅ Nhấn nút GUI để bắt đầu!")
