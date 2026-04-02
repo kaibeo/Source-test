@@ -650,7 +650,7 @@ end)
 
 -- ══════════════════════════════════════════
 --                  GUI
--- ══════════════════════════
+-- ══════════════════════════════════════════
 local old = player.PlayerGui:FindFirstChild("KLv6GUI")
 if old then old:Destroy() end
 
