@@ -651,3 +651,215 @@ end)
 -- ══════════════════════════════════════════
 --                  GUI
 -- ══════════════════════════
+local old = player.PlayerGui:FindFirstChild("KLv6GUI")
+if old then old:Destroy() end
+
+local sg = Instance.new("ScreenGui")
+sg.Name         = "KLv6GUI"
+sg.ResetOnSpawn = false
+sg.Parent       = player.PlayerGui
+
+-- Main frame
+local frame = Instance.new("Frame")
+frame.Size                   = UDim2.new(0, 260, 0, 320)
+frame.Position               = UDim2.new(0, 15, 0, 15)
+frame.BackgroundColor3       = Color3.fromRGB(10,10,18)
+frame.BackgroundTransparency = 0.05
+frame.BorderSizePixel        = 0
+frame.Active                 = true
+frame.Draggable              = true
+frame.Parent                 = sg
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0,14)
+local stroke = Instance.new("UIStroke", frame)
+stroke.Color = Color3.fromRGB(255,80,0); stroke.Thickness = 2
+
+-- Title
+local title = Instance.new("Frame")
+title.Size             = UDim2.new(1,0,0,36)
+title.BackgroundColor3 = Color3.fromRGB(200,50,0)
+title.BorderSizePixel  = 0
+title.Parent           = frame
+Instance.new("UICorner", title).CornerRadius = UDim.new(0,14)
+local titleLbl = Instance.new("TextLabel")
+titleLbl.Size             = UDim2.new(1,0,1,0)
+titleLbl.BackgroundTransparency = 1
+titleLbl.TextColor3       = Color3.new(1,1,1)
+titleLbl.Text             = "👑  KING LEGACY DUNGEON v6"
+titleLbl.TextScaled       = true
+titleLbl.Font             = Enum.Font.GothamBold
+titleLbl.Parent           = title
+
+-- Helper tạo label
+local function mkLbl(posY, color)
+    local l = Instance.new("TextLabel")
+    l.Size                   = UDim2.new(1,-10,0,22)
+    l.Position               = UDim2.new(0,5,0,posY)
+    l.BackgroundTransparency = 1
+    l.TextColor3             = color or Color3.new(1,1,1)
+    l.TextScaled             = true
+    l.Font                   = Enum.Font.Gotham
+    l.Parent                 = frame
+    return l
+end
+
+local lTarget  = mkLbl(42,  Color3.fromRGB(255,210,80))
+local lMob     = mkLbl(66,  Color3.fromRGB(150,220,255))
+local lRoom    = mkLbl(90,  Color3.fromRGB(100,200,255))
+local lCD      = mkLbl(114, Color3.fromRGB(200,255,200))
+local lPortal  = mkLbl(138, Color3.fromRGB(200,150,255))
+local lStats   = mkLbl(162, Color3.fromRGB(180,255,180))
+lStats.Size    = UDim2.new(1,-10,0,44)
+
+lTarget.Text  = "🎯 Target: --"
+lMob.Text     = "👾 Mob: 0"
+lRoom.Text    = "🔵 Room: --"
+lCD.Text      = "⏱ Z CD: sẵn sàng"
+lPortal.Text  = "🚪 Portal: --"
+lStats.Text   = "☠0  💀0  🎁0  👊0"
+
+-- Helper tạo button
+local function mkBtn(text, posY, color)
+    local b = Instance.new("TextButton")
+    b.Size             = UDim2.new(1,-10,0,38)
+    b.Position         = UDim2.new(0,5,0,posY)
+    b.BackgroundColor3 = color
+    b.TextColor3       = Color3.new(1,1,1)
+    b.Text             = text
+    b.TextScaled       = true
+    b.Font             = Enum.Font.GothamBold
+    b.BorderSizePixel  = 0
+    b.Parent           = frame
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0,10)
+    return b
+end
+
+local farmBtn   = mkBtn("▶  Bắt đầu Farm",     215, Color3.fromRGB(40,160,40))
+local portalBtn = mkBtn("🚪  Auto Portal: BẬT", 260, Color3.fromRGB(100,40,180))
+local noclipBtn = mkBtn("🔵  NoClip: BẬT",      305, Color3.fromRGB(0,120,200))
+
+-- Sự kiện
+farmBtn.MouseButton1Click:Connect(function()
+    S.farming = not S.farming
+    if S.farming then
+        farmBtn.BackgroundColor3 = Color3.fromRGB(180,40,40)
+        farmBtn.Text             = "⏹  Dừng Farm"
+        S.antiTP                 = CONFIG.AntiTP
+        S.hitCount               = 0
+        S.switchTarget           = false
+        S.lastRoomZ              = 0
+        S.portalHistory          = {}
+        S.wave                   = 0
+
+        task.spawn(function()
+            -- Equip OpOp ngay
+            local fruit = getTool("opop") or getTool("op op")
+                       or getTool("op-op") or getTool("control")
+            if fruit then equip(fruit); log("✅ Đã equip OpOp!") end
+            task.wait(0.5)
+            dungeonLoop()
+        end)
+    else
+        farmBtn.BackgroundColor3 = Color3.fromRGB(40,160,40)
+        farmBtn.Text             = "▶  Bắt đầu Farm"
+        S.antiTP                 = false
+        S.target                 = nil
+        S.hitCount               = 0
+    end
+end)
+
+portalBtn.MouseButton1Click:Connect(function()
+    CONFIG.AutoPortal = not CONFIG.AutoPortal
+    portalBtn.Text    = CONFIG.AutoPortal
+        and "🚪  Auto Portal: BẬT"
+        or  "🚪  Auto Portal: TẮT"
+    portalBtn.BackgroundColor3 = CONFIG.AutoPortal
+        and Color3.fromRGB(100,40,180)
+        or  Color3.fromRGB(50,20,80)
+end)
+
+noclipBtn.MouseButton1Click:Connect(function()
+    CONFIG.NoClip   = not CONFIG.NoClip
+    noclipBtn.Text  = CONFIG.NoClip and "🔵  NoClip: BẬT" or "🔵  NoClip: TẮT"
+    noclipBtn.BackgroundColor3 = CONFIG.NoClip
+        and Color3.fromRGB(0,180,100)
+        or  Color3.fromRGB(80,80,80)
+end)
+
+-- Update UI
+task.spawn(function()
+    while true do
+        task.wait(0.4)
+        if S.farming then
+            local t    = S.target
+            local hum  = t and t:FindFirstChildOfClass("Humanoid")
+            local hp   = hum and math.floor(hum.Health) or 0
+            local tName= t and t.Name or "Đang tìm..."
+
+            lTarget.Text = "🎯 "..tName.."  HP:"..hp
+            lMob.Text    = "👾 Mob 300s: "..#S.mobList
+                .."  Hit:"..S.hitCount.."/"..CONFIG.MaxHit
+
+            -- Room
+            local tl = roomTimeLeft()
+            if S.lastRoomZ == 0 then
+                lRoom.Text       = "🔵 Room: Chưa bật"
+                lRoom.TextColor3 = Color3.fromRGB(200,200,200)
+            elseif tl > 0 then
+                lRoom.Text       = "🟢 Room: "..tl.."s còn lại"
+                lRoom.TextColor3 = Color3.fromRGB(100,255,100)
+            else
+                lRoom.Text       = "🔴 Room: Hết! Dùng Z ngay!"
+                lRoom.TextColor3 = Color3.fromRGB(255,80,80)
+            end
+
+            -- Z CD
+            local cd = math.max(0, math.floor(CONFIG.RoomCD-(tick()-S.lastRoomZ)))
+            if S.lastRoomZ == 0 or cd == 0 then
+                lCD.Text       = "⚡ Z: Sẵn sàng!"
+                lCD.TextColor3 = Color3.fromRGB(100,255,100)
+            else
+                lCD.Text       = "⏱ Z CD: "..cd.."s"
+                lCD.TextColor3 = Color3.fromRGB(200,255,200)
+            end
+
+            -- Portal
+            lPortal.Text = "🚪 Portal:"..S.stats.portals
+                .."  Wave:"..S.wave
+                .."  Dungeon:"..S.stats.dungeons
+
+            -- Stats
+            lStats.Text = string.format(
+                "☠%d  💀%d  🎁%d  👊%d",
+                S.stats.kills, S.stats.deaths,
+                S.stats.drops, S.stats.hits
+            )
+
+            -- Track kill
+            if t and t:FindFirstChildOfClass("Humanoid") then
+                local h = t:FindFirstChildOfClass("Humanoid")
+                if h and h.Health <= 0 then
+                    S.stats.kills = S.stats.kills + 1
+                    S.target      = nil
+                end
+            end
+        else
+            lTarget.Text = "🎯 Target: --"
+            lMob.Text    = "👾 Mob: 0"
+            lPortal.Text = "🚪 Portal: --"
+        end
+    end
+end)
+
+-- ══════════════════════════════════════════
+--              KHỞI ĐỘNG
+-- ══════════════════════════════════════════
+print("╔════════════════════════════════════╗")
+print("║  KING LEGACY FULL DUNGEON v6       ║")
+print("║  Auto Dungeon + Portal      ✅     ║")
+print("║  Z OpOp 60s cooldown        ✅     ║")
+print("║  OpOp TRƯỚC Kioru V2        ✅     ║")
+print("║  Random mob 300s, 2hit đổi  ✅     ║")
+print("║  M1 + Skill song song       ✅     ║")
+print("║  Auto Dodge + Respawn       ✅     ║")
+print("╚════════════════════════════════════╝")
+print("✅ Nhấn nút GUI để bắt đầu!")
