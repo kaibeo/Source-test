@@ -1,14 +1,20 @@
--- // KING LEGACY - HYBRID MAX v5
--- ✅ Z OpOp (Zone Control) cooldown 60s cố định
--- ✅ Fruit: OpOp TRƯỚC - Sword: Kioru V2 SAU
--- ✅ Random quái 300 studs - 2 hit rồi đổi con
+-- ============================================================
+-- KING LEGACY - FULL DUNGEON FARM v6
+-- ✅ Auto vào dungeon + TP cổng
+-- ✅ OpOp Z 60s cooldown tự động
+-- ✅ Fruit TRƯỚC Sword (OpOp → Kioru V2)
+-- ✅ Fast Attack + Random mob 300 studs
+-- ✅ 2 hit rồi đổi con
 -- ✅ M1 + Skill song song
--- ✅ Auto respawn + GUI
+-- ✅ Auto respawn + Auto retry dungeon
+-- ✅ GUI đầy đủ + kéo được
 -- Executor: Delta
+-- ============================================================
 
 local Players             = game:GetService("Players")
 local Workspace           = game:GetService("Workspace")
 local RunService          = game:GetService("RunService")
+local ReplicatedStorage   = game:GetService("ReplicatedStorage")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local player   = Players.LocalPlayer
@@ -16,45 +22,138 @@ local char     = player.Character or player.CharacterAdded:Wait()
 local humanoid = char:WaitForChild("Humanoid")
 local root     = char:WaitForChild("HumanoidRootPart")
 
--- ================= STATE =================
-local farming      = false
-local target       = nil
-local dodgeTime    = 0
-local lastDodge    = 0
-local angle        = 0
-local hitCount     = 0
-local maxHit       = 2
-local switchTarget = false
-local mobList      = {}
-local lastMobScan  = 0
-local RANGE        = 300
+-- ══════════════════════════════════════════
+--              CONFIG
+-- ══════════════════════════════════════════
+local CONFIG = {
+    -- Attack
+    AttackRange  = 18,
+    AttackDelay  = 0.065,
+    MaxHit       = 2,
+    MobRange     = 300,
 
--- Room Z timing
-local lastRoomZ    = 0
-local ROOM_CD      = 60   -- 60 giây = thời gian Room OpOp
-local roomActive   = false
-local roomEndTime  = 0
+    -- Movement
+    NoClip       = true,
+    StepDelay    = 0.03,
+    AntiTP       = true,
 
--- ================= AUTO RESPAWN =================
-player.CharacterAdded:Connect(function(newChar)
-    char     = newChar
-    humanoid = newChar:WaitForChild("Humanoid")
-    root     = newChar:WaitForChild("HumanoidRootPart")
-    task.wait(2)
-    print("[KL] Respawned - tiếp tục farm!")
-end)
+    -- Room Z
+    RoomCD       = 60,   -- 60 giây = thời gian Room OpOp
 
--- ================= TOOL =================
-local function getTool(keyword)
-    for _, v in ipairs(player.Backpack:GetChildren()) do
-        if v:IsA("Tool") and v.Name:lower():find(keyword) then
-            return v
+    -- Dungeon
+    AutoDungeon  = true,
+    AutoPortal   = true,
+    PortalWait   = 4,
+    ClearDelay   = 4,
+    AutoRetry    = true,
+
+    -- Portal keywords
+    PortalNames  = {
+        "dungeon","portal","gate","enter","door",
+        "entrance","warp","next","stage","floor",
+        "boss","raid","arena","chamber","tomb",
+    },
+}
+
+-- ══════════════════════════════════════════
+--              STATE
+-- ══════════════════════════════════════════
+local S = {
+    farming      = false,
+    target       = nil,
+    lastSetPos   = nil,
+    antiTP       = false,
+    hitCount     = 0,
+    switchTarget = false,
+    mobList      = {},
+    lastScan     = 0,
+    lastRoomZ    = 0,
+    roomEnd      = 0,
+    portalHistory= {},
+    currentPortal= nil,
+    phase        = "IDLE",
+    wave         = 0,
+    stats = {kills=0, deaths=0, hits=0, drops=0, portals=0, dungeons=0},
+    status       = "Đang dừng",
+}
+
+-- ══════════════════════════════════════════
+--              UTILITY
+-- ══════════════════════════════════════════
+local function log(msg)
+    S.status = msg
+    print("[KL v6] "..msg)
+end
+
+local function getChar()
+    char     = player.Character
+    if char then
+        humanoid = char:FindFirstChildOfClass("Humanoid")
+        root     = char:FindFirstChild("HumanoidRootPart")
+    end
+    return char and humanoid and root
+end
+
+local function isAlive()
+    return getChar() and humanoid and humanoid.Health > 0
+end
+
+local function distTo(pos)
+    if not root then return math.huge end
+    return (root.Position - pos).Magnitude
+end
+
+-- ══════════════════════════════════════════
+--              NOCLIP
+-- ══════════════════════════════════════════
+RunService.Stepped:Connect(function()
+    if CONFIG.NoClip and char then
+        for _, p in pairs(char:GetDescendants()) do
+            if p:IsA("BasePart") then p.CanCollide = false end
         end
     end
-    for _, v in ipairs(char:GetChildren()) do
-        if v:IsA("Tool") and v.Name:lower():find(keyword) then
-            return v
+end)
+
+-- ══════════════════════════════════════════
+--           ANTI TELEPORT BACK
+-- ══════════════════════════════════════════
+task.spawn(function()
+    while true do
+        task.wait(0.08)
+        if S.antiTP and S.lastSetPos and root and S.farming then
+            if (root.Position - S.lastSetPos).Magnitude > 18 then
+                root.CFrame = CFrame.new(S.lastSetPos)
+            end
         end
+    end
+end)
+
+-- ══════════════════════════════════════════
+--           TELEPORT STEP
+-- ══════════════════════════════════════════
+local function teleportTo(pos, fast)
+    if not isAlive() then return end
+    local steps = fast and 5 or 10
+    local start = root.Position
+    for i = 1, steps do
+        if not isAlive() or not S.farming then return end
+        local lp = start:Lerp(pos, i/steps)
+        lp = Vector3.new(lp.X, math.max(lp.Y, 4), lp.Z)
+        S.lastSetPos = lp
+        root.CFrame  = CFrame.new(lp)
+        task.wait(CONFIG.StepDelay)
+    end
+end
+
+-- ══════════════════════════════════════════
+--              TOOL
+-- ══════════════════════════════════════════
+local function getTool(kw)
+    for _, v in ipairs(player.Backpack:GetChildren()) do
+        if v:IsA("Tool") and v.Name:lower():find(kw) then return v end
+    end
+    for _, v in ipairs(char:GetChildren()) do
+        if v:IsA("Tool") and v.Name:lower():find(kw) then return v end
     end
     return nil
 end
@@ -66,21 +165,31 @@ local function equip(tool)
     end
 end
 
--- ================= AIM =================
+-- ══════════════════════════════════════════
+--              AIM
+-- ══════════════════════════════════════════
 local function aim()
-    if target and target:FindFirstChild("HumanoidRootPart") then
-        root.CFrame = CFrame.new(root.Position, target.HumanoidRootPart.Position)
+    if S.target and S.target:FindFirstChild("HumanoidRootPart") then
+        root.CFrame = CFrame.new(root.Position, S.target.HumanoidRootPart.Position)
     end
 end
 
--- ================= SKILL =================
+-- ══════════════════════════════════════════
+--              PRESS KEY
+-- ══════════════════════════════════════════
 local function press(key)
     VirtualInputManager:SendKeyEvent(true,  key, false, game)
     task.wait(0.09)
     VirtualInputManager:SendKeyEvent(false, key, false, game)
 end
 
--- ================= DODGE =================
+-- ══════════════════════════════════════════
+--              DODGE
+-- ══════════════════════════════════════════
+local lastDodge = 0
+local dodgeTime = 0
+local angle     = 0
+
 local function dangerous(mob)
     if tick() - lastDodge < 1 then return false end
     if not mob then return false end
@@ -89,61 +198,43 @@ local function dangerous(mob)
         if v:IsA("ParticleEmitter") and v.Enabled then
             local p = v.Parent
             if p and p:IsA("BasePart") then
-                if (p.Position - root.Position).Magnitude < 65 then
-                    return true
-                end
+                if (p.Position - root.Position).Magnitude < 65 then return true end
             end
         end
     end
     return false
 end
 
--- ===============================================
---   ROOM TIMER (60 giây cố định)
--- ===============================================
-
--- Kiểm tra Room còn active không
-local function isRoomActive()
-    return roomActive and tick() < roomEndTime
-end
-
--- Còn bao nhiêu giây
-local function roomTimeLeft()
-    if not roomActive then return 0 end
-    local left = roomEndTime - tick()
-    return math.max(0, left)
-end
-
--- Kích hoạt Z và bắt đầu đếm 60s
-local function useRoomZ()
-    print("[KL] 🔵 Dùng Z Zone Control - Room 60s bắt đầu!")
-    press(Enum.KeyCode.Z)
-    lastRoomZ   = tick()
-    roomActive  = true
-    roomEndTime = tick() + ROOM_CD
-end
-
--- Kiểm tra có nên dùng Z không
+-- ══════════════════════════════════════════
+--           ROOM Z (60s cooldown)
+-- ══════════════════════════════════════════
 local function shouldUseZ()
-    -- Chưa dùng lần nào → dùng ngay
-    if lastRoomZ == 0 then return true end
-    -- Room đã hết (qua 60s) → dùng lại
-    if tick() - lastRoomZ >= ROOM_CD then return true end
-    return false
+    if S.lastRoomZ == 0 then return true end
+    return tick() - S.lastRoomZ >= CONFIG.RoomCD
 end
 
--- ===============================================
---   SCAN MOB trong 300 studs
--- ===============================================
+local function useRoomZ()
+    log("🔵 Room hết - Dùng Z Zone Control!")
+    press(Enum.KeyCode.Z)
+    S.lastRoomZ = tick()
+    S.roomEnd   = tick() + CONFIG.RoomCD
+end
+
+local function roomTimeLeft()
+    return math.max(0, math.floor(S.roomEnd - tick()))
+end
+
+-- ══════════════════════════════════════════
+--           SCAN MOB 300 STUDS
+-- ══════════════════════════════════════════
 local function scanMobs()
-    if tick() - lastMobScan < 1 then return end
-    lastMobScan = tick()
-    mobList = {}
+    if tick() - S.lastScan < 1 then return end
+    S.lastScan = tick()
+    S.mobList  = {}
 
     for _, v in ipairs(Workspace:GetDescendants()) do
-        if not v:IsA("Model") then continue end
+        if not v:IsA("Model") or v == char then continue end
         if not v:FindFirstChild("HumanoidRootPart") then continue end
-        if v == char then continue end
 
         local isPlayer = false
         for _, p in ipairs(Players:GetPlayers()) do
@@ -154,21 +245,20 @@ local function scanMobs()
         local hum = v:FindFirstChildOfClass("Humanoid")
         if not hum or hum.Health <= 0 then continue end
 
-        local d = (root.Position - v.HumanoidRootPart.Position).Magnitude
-        if d <= RANGE then
-            table.insert(mobList, v)
+        local d = distTo(v.HumanoidRootPart.Position)
+        if d <= CONFIG.MobRange then
+            table.insert(S.mobList, v)
         end
     end
 end
 
--- ===============================================
---   RANDOM MOB
--- ===============================================
+-- ══════════════════════════════════════════
+--           RANDOM MOB
+-- ══════════════════════════════════════════
 local function getRandomMob()
     scanMobs()
-
     local alive = {}
-    for _, v in ipairs(mobList) do
+    for _, v in ipairs(S.mobList) do
         if v.Parent then
             local hum = v:FindFirstChildOfClass("Humanoid")
             if hum and hum.Health > 0 then
@@ -176,67 +266,195 @@ local function getRandomMob()
             end
         end
     end
-
     if #alive == 0 then return nil end
     if #alive == 1 then return alive[1] end
-
     local filtered = {}
     for _, v in ipairs(alive) do
-        if v ~= target then
-            table.insert(filtered, v)
-        end
+        if v ~= S.target then table.insert(filtered, v) end
     end
-
     if #filtered == 0 then return alive[1] end
     return filtered[math.random(1, #filtered)]
 end
 
--- ===============================================
---   LOOP 1: M1 SPAM + ĐẾM HIT
--- ===============================================
+-- ══════════════════════════════════════════
+--           KIỂM TRA HẾT MOB
+-- ══════════════════════════════════════════
+local function isAreaCleared()
+    for _, v in ipairs(Workspace:GetDescendants()) do
+        if not v:IsA("Model") or v == char then continue end
+        local hum  = v:FindFirstChildOfClass("Humanoid")
+        local root2= v:FindFirstChild("HumanoidRootPart")
+        if not hum or hum.Health <= 0 or not root2 then continue end
+        local isPlayer = false
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p.Character == v then isPlayer = true; break end
+        end
+        if isPlayer then continue end
+        if distTo(root2.Position) < 500 then return false end
+    end
+    return true
+end
+
+-- ══════════════════════════════════════════
+--           NHẶT DROP
+-- ══════════════════════════════════════════
+local function collectDrops()
+    log("🎁 Nhặt drop...")
+    local keywords = {"drop","beli","chest","fragment","accessory","item","reward","loot"}
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if not isAlive() or not S.farming then break end
+        local name = obj.Name:lower()
+        for _, kw in pairs(keywords) do
+            if name:find(kw) then
+                local pos = obj:IsA("BasePart") and obj.Position
+                    or (obj:IsA("Model") and obj.PrimaryPart and obj.PrimaryPart.Position)
+                if pos and distTo(pos) < 100 then
+                    teleportTo(pos + Vector3.new(0,2,0), true)
+                    task.wait(0.2)
+                    S.stats.drops = S.stats.drops + 1
+                end
+                break
+            end
+        end
+    end
+end
+
+-- ══════════════════════════════════════════
+--           PORTAL SYSTEM
+-- ══════════════════════════════════════════
+local function findPortals()
+    local portals = {}
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if not obj.Parent then continue end
+        local name    = obj.Name:lower()
+        local isPortal = false
+        for _, kw in pairs(CONFIG.PortalNames) do
+            if name:find(kw) then isPortal = true; break end
+        end
+        if not isPortal then continue end
+
+        local part = obj:IsA("BasePart") and obj
+            or (obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")))
+        if not part then continue end
+
+        -- Bỏ qua cổng đã vào
+        local visited = false
+        for _, vPos in pairs(S.portalHistory) do
+            if (part.Position - vPos).Magnitude < 25 then visited = true; break end
+        end
+        if visited then continue end
+
+        local d = distTo(part.Position)
+        if d < 1000 then
+            table.insert(portals, {
+                obj  = obj,
+                part = part,
+                pos  = part.Position,
+                dist = d,
+                name = obj.Name,
+            })
+        end
+    end
+    table.sort(portals, function(a,b) return a.dist < b.dist end)
+    return portals
+end
+
+local function enterPortal(portal)
+    if not portal or not isAlive() then return false end
+    log("🚪 Vào cổng: "..portal.name)
+
+    table.insert(S.portalHistory, portal.pos)
+    if #S.portalHistory > 15 then table.remove(S.portalHistory, 1) end
+
+    teleportTo(portal.pos + Vector3.new(0,3,0))
+    task.wait(0.3)
+    teleportTo(portal.pos)
+    task.wait(0.3)
+
+    -- Fire remote interact
+    pcall(function()
+        local remotes = {
+            "EnterDungeon","DungeonEnter","InteractPortal",
+            "UsePortal","ActivatePortal","EnterGate",
+            "OpenDoor","NextFloor","NextWave","NextStage",
+        }
+        for _, rName in pairs(remotes) do
+            local r = ReplicatedStorage:FindFirstChild(rName, true)
+            if r and r:IsA("RemoteEvent") then
+                r:FireServer(portal.obj)
+                task.wait(0.2)
+            end
+        end
+    end)
+
+    S.stats.portals   = S.stats.portals + 1
+    S.currentPortal   = portal
+    log("✅ Đã vào cổng! Chờ load...")
+    task.wait(CONFIG.PortalWait)
+    return true
+end
+
+local function handlePortal()
+    if not CONFIG.AutoPortal then return false end
+    log("🔍 Tìm cổng dungeon...")
+    local portals = findPortals()
+    if #portals == 0 then
+        log("❌ Không tìm thấy cổng - reset history...")
+        if #S.portalHistory > 5 then S.portalHistory = {} end
+        task.wait(3)
+        return false
+    end
+    log("🚪 Tìm thấy "..#portals.." cổng")
+    return enterPortal(portals[1])
+end
+
+-- ══════════════════════════════════════════
+--     LOOP 1: M1 SPAM (độc lập)
+-- ══════════════════════════════════════════
 task.spawn(function()
     while true do
-        if farming and target and dodgeTime <= 0
+        if S.farming and S.target and dodgeTime <= 0
            and humanoid and humanoid.Health > 0 then
 
-            local hum = target:FindFirstChildOfClass("Humanoid")
-            if not hum or hum.Health <= 0 or not target.Parent then
-                target   = getRandomMob()
-                hitCount = 0
+            local hum = S.target:FindFirstChildOfClass("Humanoid")
+            if not hum or hum.Health <= 0 or not S.target.Parent then
+                S.target   = getRandomMob()
+                S.hitCount = 0
                 task.wait(0.1)
-                continue
+                goto continue
             end
 
             local tool = char:FindFirstChildOfClass("Tool")
             if tool then
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true,  game, 1)
+                VirtualInputManager:SendMouseButtonEvent(0,0,0,true,  game,1)
                 task.wait(0.05)
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                VirtualInputManager:SendMouseButtonEvent(0,0,0,false, game,1)
+                S.stats.hits = S.stats.hits + 1
+                S.hitCount   = S.hitCount + 1
 
-                hitCount = hitCount + 1
-                if hitCount >= maxHit then
-                    switchTarget = true
-                    hitCount     = 0
+                if S.hitCount >= CONFIG.MaxHit then
+                    S.switchTarget = true
+                    S.hitCount     = 0
                 end
             end
         end
-        task.wait(0.05)
+        ::continue::
+        task.wait(CONFIG.AttackDelay)
     end
 end)
 
--- ===============================================
---   LOOP 2: SKILL
---   OpOp TRƯỚC (Z khi hết 60s) → Kioru V2 SAU
--- ===============================================
+-- ══════════════════════════════════════════
+--     LOOP 2: SKILL (OpOp → Kioru V2)
+-- ══════════════════════════════════════════
 task.spawn(function()
     while true do
-        if farming and target and dodgeTime <= 0
+        if S.farming and S.target and dodgeTime <= 0
            and humanoid and humanoid.Health > 0
-           and target:FindFirstChild("HumanoidRootPart") then
+           and S.target:FindFirstChild("HumanoidRootPart") then
 
             aim()
 
-            -- ✅ OpOp FRUIT TRƯỚC
+            -- ✅ OPOP FRUIT TRƯỚC
             local fruit = getTool("opop")
                        or getTool("op op")
                        or getTool("op-op")
@@ -245,22 +463,21 @@ task.spawn(function()
                 equip(fruit)
                 aim()
 
-                -- ✅ Z: Dùng khi Room hết (60s cooldown)
+                -- Z khi Room hết (60s)
                 if shouldUseZ() then
                     useRoomZ()
-                    task.wait(0.5)
+                    task.wait(0.4)
                 end
 
-                -- X, C, V, B, E dùng bình thường
-                press(Enum.KeyCode.X)  -- Stonecraft
+                press(Enum.KeyCode.X) -- Stonecraft
                 task.wait(0.1)
-                press(Enum.KeyCode.C)  -- Electroheart
+                press(Enum.KeyCode.C) -- Electroheart
                 task.wait(0.1)
-                press(Enum.KeyCode.V)  -- Task Pillar
+                press(Enum.KeyCode.V) -- Task Pillar
                 task.wait(0.1)
-                press(Enum.KeyCode.B)  -- Blink
+                press(Enum.KeyCode.B) -- Blink
                 task.wait(0.1)
-                press(Enum.KeyCode.E)  -- Fusion Cut
+                press(Enum.KeyCode.E) -- Fusion Cut
                 task.wait(0.2)
             end
 
@@ -269,242 +486,168 @@ task.spawn(function()
             if sword then
                 equip(sword)
                 aim()
-                press(Enum.KeyCode.Z)  -- Echo Strike
+                press(Enum.KeyCode.Z) -- Echo Strike
                 task.wait(0.1)
-                press(Enum.KeyCode.X)  -- Biohazard Bolt
+                press(Enum.KeyCode.X) -- Biohazard Bolt
                 task.wait(0.2)
             end
 
-            -- Đổi sang con random mới sau mỗi lượt skill
+            -- Đổi con sau mỗi lượt skill
             local newMob = getRandomMob()
             if newMob then
-                target       = newMob
-                hitCount     = 0
-                switchTarget = false
+                S.target       = newMob
+                S.hitCount     = 0
+                S.switchTarget = false
             end
-
         end
         task.wait(0.05)
     end
 end)
 
--- ===============================================
---   LOOP 3: Switch target từ M1
--- ===============================================
+-- ══════════════════════════════════════════
+--     LOOP 3: Switch target từ M1
+-- ══════════════════════════════════════════
 task.spawn(function()
     while true do
         task.wait(0.1)
-        if farming and switchTarget then
+        if S.farming and S.switchTarget then
             local newMob = getRandomMob()
             if newMob then
-                target       = newMob
-                hitCount     = 0
-                switchTarget = false
+                S.target       = newMob
+                S.hitCount     = 0
+                S.switchTarget = false
             end
         end
     end
 end)
 
--- ===============================================
---   MAIN LOOP (Di chuyển + Dodge)
--- ===============================================
+-- ══════════════════════════════════════════
+--     MAIN LOOP: Di chuyển + Dodge + Dungeon
+-- ══════════════════════════════════════════
+local function startAttackLoop()
+    -- Attack loop đã chạy ở trên
+end
+
+local function dungeonLoop()
+    log("🎮 Bắt đầu farm dungeon!")
+
+    -- Vào cổng đầu tiên
+    handlePortal()
+
+    while S.farming do
+        -- Respawn
+        if not isAlive() then
+            S.stats.deaths = S.stats.deaths + 1
+            log("💀 Chết ("..S.stats.deaths..") - Chờ respawn...")
+            S.target = nil
+            task.wait(4)
+            if true then
+                pcall(function()
+                    local r = ReplicatedStorage:FindFirstChild("Respawn")
+                    if r then r:FireServer() end
+                end)
+                task.wait(3)
+                getChar()
+                handlePortal()
+            end
+            continue
+        end
+
+        -- Cập nhật target
+        S.target = S.target or getRandomMob()
+
+        if S.target then
+            local hum = S.target:FindFirstChildOfClass("Humanoid")
+            if not hum or hum.Health <= 0 or not S.target.Parent then
+                S.stats.kills = S.stats.kills + 1
+                S.target      = getRandomMob()
+                collectDrops()
+            else
+                log("⚔️ "..S.target.Name.." | HP:"..math.floor(hum.Health)
+                    .." | Wave:"..S.wave)
+            end
+        else
+            -- Không có mob
+            log("✅ Clear! Kiểm tra cổng tiếp...")
+            collectDrops()
+            task.wait(CONFIG.ClearDelay)
+
+            S.target = getRandomMob()
+            if not S.target then
+                -- Thực sự hết mob → tìm cổng
+                if CONFIG.AutoPortal then
+                    S.wave = S.wave + 1
+                    local entered = handlePortal()
+                    if not entered and CONFIG.AutoRetry then
+                        log("🔄 Retry dungeon mới...")
+                        S.stats.dungeons = S.stats.dungeons + 1
+                        S.wave           = 0
+                        S.portalHistory  = {}
+                        task.wait(2)
+                        handlePortal()
+                    end
+                end
+            end
+        end
+
+        task.wait(0.1)
+    end
+
+    log("⏹ Đã dừng farm!")
+    S.phase = "IDLE"
+end
+
+-- ══════════════════════════════════════════
+--     RENDER LOOP: Di chuyển + Dodge
+-- ══════════════════════════════════════════
 RunService.RenderStepped:Connect(function(dt)
-    if not farming then return end
+    if not S.farming then return end
     if not root or not root.Parent then return end
     if not humanoid or humanoid.Health <= 0 then return end
 
-    if not target then
-        target = getRandomMob()
-        if not target then return end
+    if not S.target then
+        S.target = getRandomMob()
+        if not S.target then return end
     end
 
-    if not target.Parent then
-        target = getRandomMob()
+    if not S.target.Parent then
+        S.target = getRandomMob()
         return
     end
 
     aim()
 
-    if dangerous(target) then
+    if dangerous(S.target) then
         dodgeTime = 1.1
         lastDodge = tick()
     end
 
     if dodgeTime > 0 then
         angle -= 7 * dt
-        local pos = target.HumanoidRootPart.Position + Vector3.new(
-            math.cos(angle) * 130,
-            95,
-            math.sin(angle) * 130
+        local pos = S.target.HumanoidRootPart.Position + Vector3.new(
+            math.cos(angle) * 130, 95, math.sin(angle) * 130
         )
-        root.CFrame = CFrame.new(pos, target.HumanoidRootPart.Position)
+        root.CFrame = CFrame.new(pos, S.target.HumanoidRootPart.Position)
         dodgeTime  -= dt
     else
         root.CFrame = CFrame.new(
-            target.HumanoidRootPart.Position + Vector3.new(0, 7, 0),
-            target.HumanoidRootPart.Position
+            S.target.HumanoidRootPart.Position + Vector3.new(0,7,0),
+            S.target.HumanoidRootPart.Position
         )
     end
 end)
 
--- ===============================================
---   GUI
--- ===============================================
-local old = player.PlayerGui:FindFirstChild("KLFarmGUI")
-if old then old:Destroy() end
-
-local sg = Instance.new("ScreenGui")
-sg.Name         = "KLFarmGUI"
-sg.ResetOnSpawn = false
-sg.Parent       = player.PlayerGui
-
-local frame = Instance.new("Frame")
-frame.Size                   = UDim2.new(0, 240, 0, 185)
-frame.Position               = UDim2.new(0, 15, 0, 15)
-frame.BackgroundColor3       = Color3.fromRGB(12, 12, 20)
-frame.BackgroundTransparency = 0.05
-frame.BorderSizePixel        = 0
-frame.Active                 = true
-frame.Draggable              = true
-frame.Parent                 = sg
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
-
-local st = Instance.new("UIStroke", frame)
-st.Color = Color3.fromRGB(255, 100, 0); st.Thickness = 1.5
-
--- Title
-local title = Instance.new("TextLabel")
-title.Size             = UDim2.new(1, 0, 0, 30)
-title.BackgroundColor3 = Color3.fromRGB(200, 60, 0)
-title.TextColor3       = Color3.new(1, 1, 1)
-title.Text             = "👑  KING LEGACY FARM v5"
-title.TextScaled       = true
-title.Font             = Enum.Font.GothamBold
-title.BorderSizePixel  = 0
-title.Parent           = frame
-Instance.new("UICorner", title).CornerRadius = UDim.new(0, 12)
-
--- Helper tạo label
-local function makeLabel(posY, color)
-    local lbl = Instance.new("TextLabel")
-    lbl.Size                   = UDim2.new(1, -10, 0, 22)
-    lbl.Position               = UDim2.new(0, 5, 0, posY)
-    lbl.BackgroundTransparency = 1
-    lbl.TextColor3             = color
-    lbl.TextScaled             = true
-    lbl.Font                   = Enum.Font.Gotham
-    lbl.Parent                 = frame
-    return lbl
-end
-
-local targetLbl = makeLabel(34,  Color3.fromRGB(255, 210, 80))
-local mobLbl    = makeLabel(58,  Color3.fromRGB(150, 220, 255))
-local roomLbl   = makeLabel(82,  Color3.fromRGB(100, 200, 255))
-local cdLbl     = makeLabel(106, Color3.fromRGB(200, 255, 200))
-
-targetLbl.Text = "🎯 Target: --"
-mobLbl.Text    = "👾 Mob 300s: 0"
-roomLbl.Text   = "🔵 Room: chưa bật"
-cdLbl.Text     = "⏱ Z CD: sẵn sàng"
-
--- Button
-local btn = Instance.new("TextButton")
-btn.Size             = UDim2.new(1, -10, 0, 38)
-btn.Position         = UDim2.new(0, 5, 0, 140)
-btn.BackgroundColor3 = Color3.fromRGB(40, 160, 40)
-btn.TextColor3       = Color3.new(1, 1, 1)
-btn.Text             = "▶  Bắt đầu Farm"
-btn.TextScaled       = true
-btn.Font             = Enum.Font.GothamBold
-btn.BorderSizePixel  = 0
-btn.Parent           = frame
-Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
-
-btn.MouseButton1Click:Connect(function()
-    farming = not farming
-    if farming then
-        btn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
-        btn.Text             = "⏹  Dừng Farm"
-        hitCount             = 0
-        switchTarget         = false
-        lastRoomZ            = 0  -- reset để dùng Z ngay
-        roomActive           = false
-
-        task.spawn(function()
-            local fruit = getTool("opop")
-                       or getTool("op op")
-                       or getTool("op-op")
-                       or getTool("control")
-            if fruit then
-                equip(fruit)
-                print("[KL] ✅ Đã equip OpOp Fruit!")
-            else
-                print("[KL] ⚠️ Không tìm thấy OpOp Fruit!")
-            end
-        end)
-
-    else
-        btn.BackgroundColor3 = Color3.fromRGB(40, 160, 40)
-        btn.Text             = "▶  Bắt đầu Farm"
-        target               = nil
-        hitCount             = 0
-        switchTarget         = false
-        roomActive           = false
-    end
+-- ══════════════════════════════════════════
+--     AUTO RESPAWN
+-- ══════════════════════════════════════════
+player.CharacterAdded:Connect(function(newChar)
+    char     = newChar
+    humanoid = newChar:WaitForChild("Humanoid")
+    root     = newChar:WaitForChild("HumanoidRootPart")
+    task.wait(2)
+    log("🔄 Respawned!")
 end)
 
--- Cập nhật UI mỗi 0.4s
-task.spawn(function()
-    while true do
-        task.wait(0.4)
-        if farming then
-            -- Target
-            local tName = target and target.Name or "Đang tìm..."
-            local hum   = target and target:FindFirstChildOfClass("Humanoid")
-            local hp    = hum and math.floor(hum.Health) or 0
-            targetLbl.Text = "🎯 " .. tName .. "  HP:" .. hp
-
-            -- Mob
-            mobLbl.Text = "👾 Mob 300s: " .. #mobList
-                .. "  Hit: " .. hitCount .. "/" .. maxHit
-
-            -- Room status
-            local timeLeft = math.floor(roomTimeLeft())
-            if lastRoomZ == 0 then
-                roomLbl.Text       = "🔵 Room: Chưa bật"
-                roomLbl.TextColor3 = Color3.fromRGB(200, 200, 200)
-            elseif isRoomActive() then
-                roomLbl.Text       = "🟢 Room: Đang chạy " .. timeLeft .. "s"
-                roomLbl.TextColor3 = Color3.fromRGB(100, 255, 100)
-            else
-                roomLbl.Text       = "🔴 Room: Hết - Sắp dùng Z!"
-                roomLbl.TextColor3 = Color3.fromRGB(255, 100, 100)
-            end
-
-            -- Cooldown Z
-            local cdLeft = math.max(0, math.floor(ROOM_CD - (tick() - lastRoomZ)))
-            if lastRoomZ == 0 or cdLeft == 0 then
-                cdLbl.Text       = "⚡ Z: Sẵn sàng!"
-                cdLbl.TextColor3 = Color3.fromRGB(100, 255, 100)
-            else
-                cdLbl.Text       = "⏱ Z CD: " .. cdLeft .. "s"
-                cdLbl.TextColor3 = Color3.fromRGB(200, 255, 200)
-            end
-        else
-            targetLbl.Text = "🎯 Target: --"
-            mobLbl.Text    = "👾 Mob 300s: 0"
-            roomLbl.Text   = "🔵 Room: --"
-            cdLbl.Text     = "⏱ Z CD: --"
-        end
-    end
-end)
-
-print("╔══════════════════════════════════╗")
-print("║  KING LEGACY HYBRID MAX v5       ║")
-print("║  Z OpOp 60s cooldown      ✅     ║")
-print("║  Fruit TRƯỚC Sword        ✅     ║")
-print("║  Random mob 300 studs     ✅     ║")
-print("║  2 hit + skill đổi con    ✅     ║")
-print("║  M1 + Skill song song     ✅     ║")
-print("╚══════════════════════════════════╝")
-print("✅ Nhấn nút GUI để bắt đầu!")
+-- ══════════════════════════════════════════
+--                  GUI
+-- ══════════════════════════
