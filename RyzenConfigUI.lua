@@ -201,8 +201,8 @@ doneCheck.Parent = doneBadge
 -- ===================== MAIN FRAME =====================
 local main = Instance.new("Frame")
 main.Name = "Main"
-main.Size = UDim2.fromOffset(420, 500)
-main.Position = UDim2.new(0.5, -210, 0.5, -250)
+main.Size = UDim2.fromOffset(300, 360)
+main.Position = UDim2.new(0.5, -150, 0.5, -180)
 main.BackgroundColor3 = COL_BG1
 main.BorderSizePixel = 0
 main.Visible = false
@@ -237,7 +237,7 @@ end
 -- ===== Ticker (marquee) =====
 local tickerFrame = Instance.new("Frame")
 tickerFrame.Name = "Ticker"
-tickerFrame.Size = UDim2.new(1, 0, 0, 28)
+tickerFrame.Size = UDim2.new(1, 0, 0, 26)
 tickerFrame.BackgroundColor3 = Color3.fromRGB(15, 5, 7)
 tickerFrame.BorderSizePixel = 0
 tickerFrame.ClipsDescendants = true
@@ -253,8 +253,8 @@ tickerBottomLine.Parent = tickerFrame
 
 local tickerText = Instance.new("TextLabel")
 tickerText.BackgroundTransparency = 1
-tickerText.Size = UDim2.new(0, 900, 1, 0)
-tickerText.Position = UDim2.new(0, 420, 0, 0)
+tickerText.Size = UDim2.new(0, 700, 1, 0)
+tickerText.Position = UDim2.new(0, 300, 0, 0)
 tickerText.Text = "🎮 Config make by Kaibeo   •   Server: discord.gg/fdyw76rTuD   •   RYZEN CONFIG v3.0 [Banana Kaitun]   •   "
 tickerText.TextColor3 = COL_DIM
 tickerText.Font = Enum.Font.Gotham
@@ -265,8 +265,8 @@ tickerText.Parent = tickerFrame
 -- ===== Topbar =====
 local topbar = Instance.new("Frame")
 topbar.Name = "Topbar"
-topbar.Size = UDim2.new(1, 0, 0, 64)
-topbar.Position = UDim2.new(0, 0, 0, 28)
+topbar.Size = UDim2.new(1, 0, 0, 58)
+topbar.Position = UDim2.new(0, 0, 0, 26)
 topbar.BackgroundColor3 = COL_BG1
 topbar.BorderSizePixel = 0
 topbar.Parent = main
@@ -280,38 +280,38 @@ topLine.Parent = topbar
 
 local avatarImg = Instance.new("ImageLabel")
 avatarImg.Name = "Avatar"
-avatarImg.Size = UDim2.fromOffset(40, 40)
-avatarImg.Position = UDim2.new(0, 16, 0.5, -20)
+avatarImg.Size = UDim2.fromOffset(36, 36)
+avatarImg.Position = UDim2.new(0, 12, 0.5, -18)
 avatarImg.BackgroundColor3 = COL_BG2
 local ok, thumb = pcall(function()
     return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
 end)
 avatarImg.Image = ok and thumb or ""
 avatarImg.Parent = topbar
-corner(avatarImg, 20)
+corner(avatarImg, 18)
 stroke(avatarImg, COL_REDDIM, 2)
 
 local nameLbl = Instance.new("TextLabel")
 nameLbl.BackgroundTransparency = 1
-nameLbl.Size = UDim2.new(0, 160, 0, 18)
-nameLbl.Position = UDim2.new(0, 64, 0, 12)
+nameLbl.Size = UDim2.new(0, 130, 0, 16)
+nameLbl.Position = UDim2.new(0, 56, 0, 11)
 nameLbl.TextXAlignment = Enum.TextXAlignment.Left
 nameLbl.Text = player.DisplayName
 nameLbl.TextColor3 = COL_TXT
 nameLbl.Font = Enum.Font.GothamBold
-nameLbl.TextSize = 15
+nameLbl.TextSize = 13
 nameLbl.TextTruncate = Enum.TextTruncate.AtEnd
 nameLbl.Parent = topbar
 
 local userLbl = Instance.new("TextLabel")
 userLbl.BackgroundTransparency = 1
-userLbl.Size = UDim2.new(0, 160, 0, 16)
-userLbl.Position = UDim2.new(0, 64, 0, 32)
+userLbl.Size = UDim2.new(0, 130, 0, 14)
+userLbl.Position = UDim2.new(0, 56, 0, 29)
 userLbl.TextXAlignment = Enum.TextXAlignment.Left
 userLbl.Text = "@" .. player.Name
 userLbl.TextColor3 = COL_DIM
 userLbl.Font = Enum.Font.Gotham
-userLbl.TextSize = 12
+userLbl.TextSize = 11
 userLbl.TextTruncate = Enum.TextTruncate.AtEnd
 userLbl.Parent = topbar
 
@@ -321,8 +321,8 @@ closeBtn.Text = "✕"
 closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextSize = 16
 closeBtn.TextColor3 = COL_DIM
-closeBtn.Size = UDim2.fromOffset(30, 30)
-closeBtn.Position = UDim2.new(1, -44, 0, 17)
+closeBtn.Size = UDim2.fromOffset(26, 26)
+closeBtn.Position = UDim2.new(1, -38, 0, 19)
 closeBtn.BackgroundColor3 = COL_BG2
 closeBtn.AutoButtonColor = false
 closeBtn.Parent = topbar
@@ -341,14 +341,14 @@ end)
 -- ===== Stats row (FPS / Ping / Time / Date) =====
 local statsRow = Instance.new("Frame")
 statsRow.Name = "StatsRow"
-statsRow.Size = UDim2.new(1, -32, 0, 84)
-statsRow.Position = UDim2.new(0, 16, 0, 104)
+statsRow.Size = UDim2.new(1, -24, 0, 76)
+statsRow.Position = UDim2.new(0, 12, 0, 94)
 statsRow.BackgroundTransparency = 1
 statsRow.Parent = main
 
 local statsLayout = Instance.new("UIGridLayout")
-statsLayout.CellPadding = UDim2.fromOffset(8, 8)
-statsLayout.CellSize = UDim2.new(0.5, -4, 0, 38)
+statsLayout.CellPadding = UDim2.fromOffset(6, 6)
+statsLayout.CellSize = UDim2.new(0.5, -3, 0, 35)
 statsLayout.SortOrder = Enum.SortOrder.LayoutOrder
 statsLayout.Parent = statsRow
 
@@ -362,34 +362,34 @@ local function makeStatCard(order, icon, label)
 
     local iconLbl = Instance.new("TextLabel")
     iconLbl.BackgroundTransparency = 1
-    iconLbl.Size = UDim2.fromOffset(28, 28)
-    iconLbl.Position = UDim2.new(0, 8, 0.5, -14)
+    iconLbl.Size = UDim2.fromOffset(24, 24)
+    iconLbl.Position = UDim2.new(0, 6, 0.5, -12)
     iconLbl.Text = icon
     iconLbl.TextColor3 = COL_RED
     iconLbl.Font = Enum.Font.GothamBold
-    iconLbl.TextSize = 15
+    iconLbl.TextSize = 13
     iconLbl.Parent = card
 
     local capLbl = Instance.new("TextLabel")
     capLbl.BackgroundTransparency = 1
-    capLbl.Size = UDim2.new(1, -44, 0, 14)
-    capLbl.Position = UDim2.new(0, 40, 0, 5)
+    capLbl.Size = UDim2.new(1, -36, 0, 12)
+    capLbl.Position = UDim2.new(0, 32, 0, 4)
     capLbl.TextXAlignment = Enum.TextXAlignment.Left
     capLbl.Text = label
     capLbl.TextColor3 = COL_DIM
     capLbl.Font = Enum.Font.Gotham
-    capLbl.TextSize = 10
+    capLbl.TextSize = 9
     capLbl.Parent = card
 
     local valLbl = Instance.new("TextLabel")
     valLbl.BackgroundTransparency = 1
-    valLbl.Size = UDim2.new(1, -44, 0, 18)
-    valLbl.Position = UDim2.new(0, 40, 0, 18)
+    valLbl.Size = UDim2.new(1, -36, 0, 16)
+    valLbl.Position = UDim2.new(0, 32, 0, 16)
     valLbl.TextXAlignment = Enum.TextXAlignment.Left
     valLbl.Text = "--"
     valLbl.TextColor3 = COL_TXT
     valLbl.Font = Enum.Font.GothamBold
-    valLbl.TextSize = 14
+    valLbl.TextSize = 12
     valLbl.Parent = card
 
     return valLbl
@@ -403,57 +403,57 @@ local clockDate = makeStatCard(4, "📅", "NGÀY")
 -- ===== Section label =====
 local sectionLbl = Instance.new("TextLabel")
 sectionLbl.BackgroundTransparency = 1
-sectionLbl.Size = UDim2.new(1, -32, 0, 20)
-sectionLbl.Position = UDim2.new(0, 16, 0, 198)
+sectionLbl.Size = UDim2.new(1, -24, 0, 18)
+sectionLbl.Position = UDim2.new(0, 12, 0, 176)
 sectionLbl.TextXAlignment = Enum.TextXAlignment.Left
 sectionLbl.Text = "THÔNG TIN MẠNG"
 sectionLbl.TextColor3 = COL_DIM
 sectionLbl.Font = Enum.Font.GothamBold
-sectionLbl.TextSize = 11
+sectionLbl.TextSize = 10
 sectionLbl.Parent = main
 
 -- ===== Network status card =====
 local netCard = Instance.new("Frame")
-netCard.Size = UDim2.new(1, -32, 0, 56)
-netCard.Position = UDim2.new(0, 16, 0, 222)
+netCard.Size = UDim2.new(1, -24, 0, 50)
+netCard.Position = UDim2.new(0, 12, 0, 198)
 netCard.BackgroundColor3 = COL_BG2
 netCard.Parent = main
 corner(netCard, 10)
 stroke(netCard, COL_LINE, 1)
 
 local netDot = Instance.new("Frame")
-netDot.Size = UDim2.fromOffset(10, 10)
-netDot.Position = UDim2.new(0, 16, 0.5, -5)
+netDot.Size = UDim2.fromOffset(9, 9)
+netDot.Position = UDim2.new(0, 14, 0.5, -4)
 netDot.BackgroundColor3 = COL_GREEN
 netDot.Parent = netCard
 corner(netDot, 5)
 
 local netTitle = Instance.new("TextLabel")
 netTitle.BackgroundTransparency = 1
-netTitle.Size = UDim2.new(0, 200, 0, 16)
-netTitle.Position = UDim2.new(0, 36, 0, 10)
+netTitle.Size = UDim2.new(1, -60, 0, 15)
+netTitle.Position = UDim2.new(0, 32, 0, 9)
 netTitle.TextXAlignment = Enum.TextXAlignment.Left
 netTitle.Text = "Trạng thái kết nối"
 netTitle.TextColor3 = COL_TXT
 netTitle.Font = Enum.Font.GothamBold
-netTitle.TextSize = 13
+netTitle.TextSize = 12
 netTitle.Parent = netCard
 
 local netVal = Instance.new("TextLabel")
 netVal.BackgroundTransparency = 1
-netVal.Size = UDim2.new(0, 200, 0, 14)
-netVal.Position = UDim2.new(0, 36, 0, 28)
+netVal.Size = UDim2.new(1, -60, 0, 13)
+netVal.Position = UDim2.new(0, 32, 0, 26)
 netVal.TextXAlignment = Enum.TextXAlignment.Left
 netVal.Text = "Đang kiểm tra..."
 netVal.TextColor3 = COL_DIM
 netVal.Font = Enum.Font.Gotham
-netVal.TextSize = 11
+netVal.TextSize = 10
 netVal.Parent = netCard
 
 -- ===== Footer =====
 local footer = Instance.new("Frame")
-footer.Size = UDim2.new(1, 0, 0, 34)
-footer.Position = UDim2.new(0, 0, 1, -34)
+footer.Size = UDim2.new(1, 0, 0, 30)
+footer.Position = UDim2.new(0, 0, 1, -30)
 footer.BackgroundColor3 = COL_BG1
 footer.BorderSizePixel = 0
 footer.Parent = main
@@ -490,19 +490,91 @@ footerRight.Parent = footer
 -- Nút nổi để ẩn/hiện toàn bộ bảng main, luôn hiển thị góc màn hình
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Name = "ToggleButton"
-toggleBtn.Text = "R"
-toggleBtn.Font = Enum.Font.GothamBlack
-toggleBtn.TextSize = 18
-toggleBtn.TextColor3 = COL_TXT
-toggleBtn.Size = UDim2.fromOffset(46, 46)
+toggleBtn.Text = ""
+toggleBtn.Size = UDim2.fromOffset(44, 44)
 toggleBtn.Position = UDim2.new(0, 20, 0, 20)
 toggleBtn.BackgroundColor3 = COL_BG1
 toggleBtn.AutoButtonColor = false
 toggleBtn.ZIndex = 50
 toggleBtn.Visible = false -- hiện sau khi loading xong
 toggleBtn.Parent = screenGui
-corner(toggleBtn, 23)
-local toggleStroke = stroke(toggleBtn, COL_REDDIM, 2)
+corner(toggleBtn, 10)
+local toggleStroke = stroke(toggleBtn, COL_RED, 1.5)
+
+-- gradient nền nhẹ cho hiệu ứng cyber
+local toggleGradient = Instance.new("UIGradient")
+toggleGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(24, 10, 12)),
+    ColorSequenceKeypoint.new(1, COL_BG1),
+})
+toggleGradient.Rotation = 90
+toggleGradient.Parent = toggleBtn
+
+-- góc cắt kiểu tech (2 vạch chéo nhỏ ở góc trên-trái & dưới-phải)
+local cornerTick1 = Instance.new("Frame")
+cornerTick1.Size = UDim2.fromOffset(10, 2)
+cornerTick1.Position = UDim2.fromOffset(4, 4)
+cornerTick1.BackgroundColor3 = COL_RED
+cornerTick1.BorderSizePixel = 0
+cornerTick1.ZIndex = 51
+cornerTick1.Parent = toggleBtn
+
+local cornerTick2 = Instance.new("Frame")
+cornerTick2.Size = UDim2.fromOffset(2, 10)
+cornerTick2.Position = UDim2.fromOffset(4, 4)
+cornerTick2.BackgroundColor3 = COL_RED
+cornerTick2.BorderSizePixel = 0
+cornerTick2.ZIndex = 51
+cornerTick2.Parent = toggleBtn
+
+local cornerTick3 = Instance.new("Frame")
+cornerTick3.Size = UDim2.fromOffset(10, 2)
+cornerTick3.Position = UDim2.new(1, -14, 1, -6)
+cornerTick3.BackgroundColor3 = COL_RED
+cornerTick3.BorderSizePixel = 0
+cornerTick3.ZIndex = 51
+cornerTick3.Parent = toggleBtn
+
+local cornerTick4 = Instance.new("Frame")
+cornerTick4.Size = UDim2.fromOffset(2, 10)
+cornerTick4.Position = UDim2.new(1, -6, 1, -14)
+cornerTick4.BackgroundColor3 = COL_RED
+cornerTick4.BorderSizePixel = 0
+cornerTick4.ZIndex = 51
+cornerTick4.Parent = toggleBtn
+
+-- icon trung tâm dạng "power / circuit" bằng ký tự tech thay vì chữ R
+local toggleIcon = Instance.new("TextLabel")
+toggleIcon.BackgroundTransparency = 1
+toggleIcon.Size = UDim2.fromScale(1, 1)
+toggleIcon.Text = "⌁"
+toggleIcon.TextColor3 = COL_RED
+toggleIcon.Font = Enum.Font.GothamBlack
+toggleIcon.TextSize = 22
+toggleIcon.ZIndex = 51
+toggleIcon.Parent = toggleBtn
+
+-- glow mờ phía sau nút, sáng lên khi hover
+local toggleGlow = Instance.new("Frame")
+toggleGlow.AnchorPoint = Vector2.new(0.5, 0.5)
+toggleGlow.Position = UDim2.new(0.5, 0, 0.5, 0)
+toggleGlow.Size = UDim2.new(1, 12, 1, 12)
+toggleGlow.BackgroundColor3 = COL_RED
+toggleGlow.BackgroundTransparency = 1
+toggleGlow.ZIndex = 49
+toggleGlow.Parent = toggleBtn
+corner(toggleGlow, 12)
+
+toggleBtn.MouseEnter:Connect(function()
+    TweenService:Create(toggleStroke, TweenInfo.new(0.15), {Thickness = 2}):Play()
+    TweenService:Create(toggleGlow, TweenInfo.new(0.15), {BackgroundTransparency = 0.85}):Play()
+    TweenService:Create(toggleIcon, TweenInfo.new(0.15), {TextSize = 24}):Play()
+end)
+toggleBtn.MouseLeave:Connect(function()
+    TweenService:Create(toggleStroke, TweenInfo.new(0.15), {Thickness = 1.5}):Play()
+    TweenService:Create(toggleGlow, TweenInfo.new(0.15), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(toggleIcon, TweenInfo.new(0.15), {TextSize = 22}):Play()
+end)
 
 -- kéo thả cho nút toggle
 do
@@ -530,24 +602,26 @@ local function setUIVisible(v)
     uiVisible = v
     if v then
         main.Visible = true
-        main.Size = UDim2.fromOffset(420, 0)
+        main.Size = UDim2.fromOffset(300, 0)
         for _, obj in ipairs(main:GetDescendants()) do
             if obj:IsA("TextLabel") then obj.TextTransparency = 1 end
         end
-        TweenService:Create(main, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {Size = UDim2.fromOffset(420, 500)}):Play()
+        TweenService:Create(main, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {Size = UDim2.fromOffset(300, 360)}):Play()
         task.wait(0.12)
         for _, obj in ipairs(main:GetDescendants()) do
             if obj:IsA("TextLabel") then
                 TweenService:Create(obj, TweenInfo.new(0.2), {TextTransparency = 0}):Play()
             end
         end
-        toggleStroke.Color = COL_REDDIM
+        toggleStroke.Color = COL_RED
+        toggleIcon.TextColor3 = COL_RED
     else
-        local tw = TweenService:Create(main, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {Size = UDim2.fromOffset(420, 0)})
+        local tw = TweenService:Create(main, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {Size = UDim2.fromOffset(300, 0)})
         tw:Play()
         tw.Completed:Wait()
         main.Visible = false
         toggleStroke.Color = COL_LINE
+        toggleIcon.TextColor3 = COL_DIM
     end
 end
 
@@ -610,14 +684,14 @@ task.spawn(function()
     fadeOut:Play()
 
     main.Visible = true
-    main.Size = UDim2.fromOffset(420, 0)
+    main.Size = UDim2.fromOffset(300, 0)
     main.BackgroundTransparency = 1
     for _, obj in ipairs(main:GetDescendants()) do
         if obj:IsA("TextLabel") then obj.TextTransparency = 1 end
     end
 
     TweenService:Create(main, TweenInfo.new(0.45, Enum.EasingStyle.Quad), {
-        Size = UDim2.fromOffset(420, 500),
+        Size = UDim2.fromOffset(300, 360),
         BackgroundTransparency = 0
     }):Play()
 
@@ -635,7 +709,7 @@ task.spawn(function()
     toggleBtn.Visible = true
     toggleBtn.Size = UDim2.fromOffset(0, 0)
     TweenService:Create(toggleBtn, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.fromOffset(46, 46)
+        Size = UDim2.fromOffset(44, 44)
     }):Play()
 end)
 
