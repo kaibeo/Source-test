@@ -50,38 +50,8 @@ Window:EditOpenButton({
     Draggable = true,
 })
 
--- Tab 1
-local tab1 = Window:CreateTab({
-    Title = "info",
-    Icon = "info"
-})
-
--- Tab 2
-local tab2 = Window:CreateTab({
-    Title = "Status",
-    Icon = "activity"
-})
-
--- Tab 3
-local tab3 = Window:CreateTab({
-    Title = "Hop Finder",
-    Icon = "server"
-})
-
--- Tab 4
-local tab4 = Window:CreateTab({
-    Title = "Farm",
-    Icon = "shovel"
-})
-
--- Tab 5
-local tab5 = Window:CreateTab({
-    Title = "Setting",
-    Icon = "settings"
-})
-
 -- ==========================================
--- TABS
+-- TABS (FIX: Chỉ dùng Window:Tab() - xóa CreateTab() đi)
 -- ==========================================
 
 local InfoTab = Window:Tab({
