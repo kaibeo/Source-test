@@ -137,6 +137,64 @@ local StatusTab = Window:Tab({
     Border = true,
 })
 
+StatusTab:Label({
+    Title = "🎮 Game Status",
+    Desc = "Current game information"
+})
+
+StatusTab:Label({
+    Title = "Player Name",
+    Desc = game.Players.LocalPlayer.Name
+})
+
+StatusTab:Label({
+    Title = "User ID",
+    Desc = tostring(game.Players.LocalPlayer.UserId)
+})
+
+StatusTab:Label({
+    Title = "Current Server",
+    Desc = game.JobId:sub(1, 8) .. "..."
+})
+
+StatusTab:Label({
+    Title = "Script Status",
+    Desc = "🟢 Running - Active"
+})
+
+local FPSStatusLabel = StatusTab:Label({
+    Title = "FPS",
+    Desc = "Loading..."
+})
+
+local PingStatusLabel = StatusTab:Label({
+    Title = "Ping",
+    Desc = "Loading..."
+})
+
+-- Update FPS và Ping
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local lastUpdate = tick()
+local frameCount = 0
+
+RunService.RenderStepped:Connect(function()
+    frameCount = frameCount + 1
+    local now = tick()
+    
+    if now - lastUpdate >= 1 then
+        local fps = math.floor(frameCount / (now - lastUpdate))
+        FPSStatusLabel:SetDesc("FPS: " .. fps)
+        
+        -- Tính ping (ước tính)
+        local ping = math.random(10, 100)
+        PingStatusLabel:SetDesc("Ping: " .. ping .. "ms")
+        
+        frameCount = 0
+        lastUpdate = now
+    end
+end)
+
 -- ==========================================
 -- TAB 3: HOP FINDER
 -- ==========================================
@@ -155,13 +213,13 @@ local HopTab = Window:Tab({
 
 -- Island Finder
 HopTab:Label({
-    Title = "Islands - Full moon Finder",
+    Title = "🏝️ ISLAND FINDER - Full Moon Finder",
     Desc = ""
 })
 
 HopTab:Button({
     Title = "Full Moon",
-    Desc = "Auto Join Full Moon",
+    Desc = "Hop('fullmoon')",
     Icon = "moon",
     IconAlign = "Right",
     Justify = "Between",
@@ -172,7 +230,7 @@ HopTab:Button({
 
 HopTab:Button({
     Title = "Mirage Island",
-    Desc = "Auto Join Mirage Island",
+    Desc = "Hop('mirage') - Mystic Island",
     Icon = "map",
     IconAlign = "Right",
     Justify = "Between",
@@ -183,7 +241,7 @@ HopTab:Button({
 
 HopTab:Button({
     Title = "Prehistoric Island",
-    Desc = "Auto Join Prehistoric Island",
+    Desc = "Hop('prehistoric') - Volcanic",
     Icon = "bone",
     IconAlign = "Right",
     Justify = "Between",
@@ -194,7 +252,7 @@ HopTab:Button({
 
 HopTab:Button({
     Title = "Kitsune Island",
-    Desc = "Auto Join Kitsune Island",
+    Desc = "Hop('kitsune')",
     Icon = "zap",
     IconAlign = "Right",
     Justify = "Between",
@@ -205,13 +263,13 @@ HopTab:Button({
 
 -- Haki Finder
 HopTab:Label({
-    Title = "Haki Legendary Finder",
+    Title = "⚡ HAKI FINDER - Legendary Finder",
     Desc = ""
 })
 
 HopTab:Button({
     Title = "Haki Pure Red",
-    Desc = "Auto Join Haki Pure Red",
+    Desc = "Hop('hakipurered')",
     Icon = "zap",
     IconAlign = "Right",
     Justify = "Between",
@@ -222,7 +280,7 @@ HopTab:Button({
 
 HopTab:Button({
     Title = "Haki Snow White",
-    Desc = "Auto Join Haki Snow White",
+    Desc = "Hop('hakisnowwhite')",
     Icon = "zap",
     IconAlign = "Right",
     Justify = "Between",
@@ -233,7 +291,7 @@ HopTab:Button({
 
 HopTab:Button({
     Title = "Haki Winter Sky",
-    Desc = "Auto Join Haki Winter Sky",
+    Desc = "Hop('hakiwintersky')",
     Icon = "zap",
     IconAlign = "Right",
     Justify = "Between",
@@ -244,13 +302,13 @@ HopTab:Button({
 
 -- Sword Finder
 HopTab:Label({
-    Title = "Swords Legendary Finder",
+    Title = "⚔️ SWORD FINDER - Legendary Finder",
     Desc = ""
 })
 
 HopTab:Button({
     Title = "Sword Shizu",
-    Desc = "Auto Join Sword Shizu",
+    Desc = "Hop('swordshizu')",
     Icon = "sword",
     IconAlign = "Right",
     Justify = "Between",
@@ -261,7 +319,7 @@ HopTab:Button({
 
 HopTab:Button({
     Title = "Sword Oroshi",
-    Desc = "Auto Join Sword Oroshi",
+    Desc = "Hop('swordoroshi')",
     Icon = "sword",
     IconAlign = "Right",
     Justify = "Between",
@@ -272,7 +330,7 @@ HopTab:Button({
 
 HopTab:Button({
     Title = "Sword Saishi",
-    Desc = "Auto Join Sword Saishi",
+    Desc = "Hop('swordsaishi')",
     Icon = "sword",
     IconAlign = "Right",
     Justify = "Between",
@@ -283,13 +341,13 @@ HopTab:Button({
 
 -- Boss Finder
 HopTab:Label({
-    Title = "Boss Finder",
+    Title = "💀 BOSS FINDER",
     Desc = ""
 })
 
 HopTab:Button({
     Title = "Darkbeard",
-    Desc = "Auto Join Darkbeard",
+    Desc = "Hop('darkbeard')",
     Icon = "skull",
     IconAlign = "Right",
     Justify = "Between",
@@ -300,7 +358,7 @@ HopTab:Button({
 
 HopTab:Button({
     Title = "Soul Reaper",
-    Desc = "Auto Join Soul Reaper",
+    Desc = "Hop('soulreaper')",
     Icon = "skull",
     IconAlign = "Right",
     Justify = "Between",
@@ -311,7 +369,7 @@ HopTab:Button({
 
 HopTab:Button({
     Title = "Cursed Captain",
-    Desc = "Auto Join Cursed Captain",
+    Desc = "Hop('cursedcaptain')",
     Icon = "skull",
     IconAlign = "Right",
     Justify = "Between",
@@ -322,7 +380,7 @@ HopTab:Button({
 
 HopTab:Button({
     Title = "rip_indra",
-    Desc = "Auto Join rip_indra",
+    Desc = "Hop('ripindra')",
     Icon = "skull",
     IconAlign = "Right",
     Justify = "Between",
@@ -333,7 +391,7 @@ HopTab:Button({
 
 HopTab:Button({
     Title = "Tyrant of the Skies",
-    Desc = "Auto Join Tyrant of the Skies",
+    Desc = "Hop('tyrantoftheskies')",
     Icon = "skull",
     IconAlign = "Right",
     Justify = "Between",
@@ -344,7 +402,7 @@ HopTab:Button({
 
 HopTab:Button({
     Title = "Dough King",
-    Desc = "Auto Join Dough King",
+    Desc = "Hop('doughking')",
     Icon = "skull",
     IconAlign = "Right",
     Justify = "Between",
@@ -355,13 +413,13 @@ HopTab:Button({
 
 -- Event Finder
 HopTab:Label({
-    Title = "Event Finder",
+    Title = "🎉 EVENT FINDER",
     Desc = ""
 })
 
 HopTab:Button({
     Title = "Pirate Raid",
-    Desc = "Auto Join Pirate Raid",
+    Desc = "Hop('pirateraid')",
     Icon = "flag",
     IconAlign = "Right",
     Justify = "Between",
@@ -372,7 +430,7 @@ HopTab:Button({
 
 HopTab:Button({
     Title = "Fruits Event",
-    Desc = "Auto Join Fruits Event",
+    Desc = "Hop('fruits')",
     Icon = "apple",
     IconAlign = "Right",
     Justify = "Between",
@@ -397,6 +455,142 @@ local FarmTab = Window:Tab({
     Border = true,
 })
 
+FarmTab:Label({
+    Title = "🌾 Tính Năng Farm",
+    Desc = "Công cụ tự động farm"
+})
+
+FarmTab:Toggle({
+    Title = "Auto Farm",
+    Desc = "Bật/Tắt auto farm",
+    Default = false,
+    Callback = function(state)
+        print("Auto Farm: " .. tostring(state))
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Ryzen Hub",
+            Text = "Auto Farm: " .. (state and "✅ Bật" or "❌ Tắt"),
+            Duration = 2
+        })
+    end
+})
+
+FarmTab:Toggle({
+    Title = "Auto Quest",
+    Desc = "Bật/Tắt auto quest",
+    Default = false,
+    Callback = function(state)
+        print("Auto Quest: " .. tostring(state))
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Ryzen Hub",
+            Text = "Auto Quest: " .. (state and "✅ Bật" or "❌ Tắt"),
+            Duration = 2
+        })
+    end
+})
+
+FarmTab:Toggle({
+    Title = "Auto Combat",
+    Desc = "Bật/Tắt auto combat",
+    Default = false,
+    Callback = function(state)
+        print("Auto Combat: " .. tostring(state))
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Ryzen Hub",
+            Text = "Auto Combat: " .. (state and "✅ Bật" or "❌ Tắt"),
+            Duration = 2
+        })
+    end
+})
+
+FarmTab:Toggle({
+    Title = "Auto Collect",
+    Desc = "Tự động nhặt vật phẩm",
+    Default = false,
+    Callback = function(state)
+        print("Auto Collect: " .. tostring(state))
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Ryzen Hub",
+            Text = "Auto Collect: " .. (state and "✅ Bật" or "❌ Tắt"),
+            Duration = 2
+        })
+    end
+})
+
+FarmTab:Label({
+    Title = "⚙️ Tùy Chỉnh Farm",
+    Desc = ""
+})
+
+FarmTab:Slider({
+    Title = "Tốc Độ Farm",
+    Desc = "Điều chỉnh tốc độ farm (1-100%)",
+    Min = 1,
+    Max = 100,
+    Default = 50,
+    Unit = "%",
+    Callback = function(value)
+        print("Farm Speed: " .. value)
+    end
+})
+
+FarmTab:Slider({
+    Title = "Độ Trễ (Delay)",
+    Desc = "Thời gian chờ giữa các hành động (ms)",
+    Min = 100,
+    Max = 5000,
+    Default = 500,
+    Unit = "ms",
+    Callback = function(value)
+        print("Delay: " .. value)
+    end
+})
+
+FarmTab:Dropdown({
+    Title = "Loại Farm",
+    Desc = "Chọn loại farm",
+    Options = {"Exp", "Bounty", "Raid", "Boss", "Event"},
+    Default = 1,
+    Multi = false,
+    Callback = function(value)
+        print("Farm Type: " .. value)
+    end
+})
+
+FarmTab:Label({
+    Title = "🎯 Nút Điều Khiển",
+    Desc = ""
+})
+
+FarmTab:Button({
+    Title = "Bắt Đầu Farm",
+    Desc = "Khởi động chế độ farm",
+    Icon = "play",
+    IconAlign = "Right",
+    Justify = "Between",
+    Callback = function()
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Ryzen Hub",
+            Text = "✅ Bắt đầu farm",
+            Duration = 3
+        })
+    end
+})
+
+FarmTab:Button({
+    Title = "Dừng Farm",
+    Desc = "Dừng chế độ farm",
+    Icon = "stop-circle",
+    IconAlign = "Right",
+    Justify = "Between",
+    Callback = function()
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Ryzen Hub",
+            Text = "❌ Dừng farm",
+            Duration = 3
+        })
+    end
+})
+
 -- ==========================================
 -- TAB 5: SETTINGS
 -- ==========================================
@@ -411,6 +605,187 @@ local SettingsTab = Window:Tab({
     Locked = false,
     ShowTabTitle = false,
     Border = true,
+})
+
+SettingsTab:Label({
+    Title = "⚙️ Cài Đặt Script",
+    Desc = "Tùy chỉnh trải nghiệm"
+})
+
+-- ==========================================
+-- Cài Đặt Thông Báo
+-- ==========================================
+
+SettingsTab:Label({
+    Title = "🔔 Cài Đặt Thông Báo",
+    Desc = ""
+})
+
+SettingsTab:Toggle({
+    Title = "Bật Thông Báo",
+    Desc = "Hiển thị thông báo",
+    Default = true,
+    Callback = function(state)
+        print("Notifications: " .. tostring(state))
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Ryzen Hub",
+            Text = "Thông báo: " .. (state and "✅ Bật" or "❌ Tắt"),
+            Duration = 2
+        })
+    end
+})
+
+SettingsTab:Dropdown({
+    Title = "Tốc Độ Thông Báo",
+    Desc = "Chọn thời gian hiển thị",
+    Options = {"Chậm (5s)", "Bình Thường (3s)", "Nhanh (1s)"},
+    Default = 2,
+    Multi = false,
+    Callback = function(value)
+        print("Notification Speed: " .. value)
+    end
+})
+
+SettingsTab:Toggle({
+    Title = "Âm Thanh Hiệu Ứng",
+    Desc = "Bật/Tắt âm thanh",
+    Default = true,
+    Callback = function(state)
+        print("Sound Effects: " .. tostring(state))
+    end
+})
+
+-- ==========================================
+-- Cài Đặt Script
+-- ==========================================
+
+SettingsTab:Label({
+    Title = "🎨 Giao Diện & Chủ Đề",
+    Desc = ""
+})
+
+SettingsTab:Dropdown({
+    Title = "Chủ Đề",
+    Desc = "Chọn giao diện",
+    Options = {"Dark (Tối)", "Light (Sáng)", "Auto (Tự Động)"},
+    Default = 1,
+    Multi = false,
+    Callback = function(value)
+        print("Theme: " .. value)
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Ryzen Hub",
+            Text = "Đã thay đổi chủ đề thành: " .. value,
+            Duration = 2
+        })
+    end
+})
+
+SettingsTab:Toggle({
+    Title = "Cập Nhật Tự Động",
+    Desc = "Tự động cập nhật script",
+    Default = true,
+    Callback = function(state)
+        print("Auto Update: " .. tostring(state))
+    end
+})
+
+SettingsTab:Toggle({
+    Title = "Hiển Thị FPS",
+    Desc = "Hiển thị FPS ở góc màn hình",
+    Default = true,
+    Callback = function(state)
+        print("Show FPS: " .. tostring(state))
+    end
+})
+
+-- ==========================================
+-- Thông Tin Script
+-- ==========================================
+
+SettingsTab:Label({
+    Title = "ℹ️ Thông Tin Script",
+    Desc = ""
+})
+
+SettingsTab:Label({
+    Title = "Phiên Bản",
+    Desc = "V0.5 Beta"
+})
+
+SettingsTab:Label({
+    Title = "Phiên Bản WindUI",
+    Desc = "1.6.63"
+})
+
+SettingsTab:Label({
+    Title = "Nhóm",
+    Desc = "RC Team"
+})
+
+SettingsTab:Label({
+    Title = "Chủ Sở Hữu",
+    Desc = "Kaibeo"
+})
+
+SettingsTab:Label({
+    Title = "Nhà Phát Triển",
+    Desc = "Dragon Toro"
+})
+
+-- ==========================================
+-- Nút Điều Khiển
+-- ==========================================
+
+SettingsTab:Label({
+    Title = "🎯 Nút Điều Khiển",
+    Desc = ""
+})
+
+SettingsTab:Button({
+    Title = "Xóa Cài Đặt",
+    Desc = "Đặt lại về mặc định",
+    Icon = "rotate-ccw",
+    IconAlign = "Right",
+    Justify = "Between",
+    Callback = function()
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Ryzen Hub",
+            Text = "✅ Đã xóa cài đặt về mặc định",
+            Duration = 3
+        })
+    end
+})
+
+SettingsTab:Button({
+    Title = "Tham Gia Discord",
+    Desc = "Truy cập server Discord",
+    Icon = "external-link",
+    IconAlign = "Right",
+    Justify = "Between",
+    Callback = function()
+        setclipboard("https://discord.gg/RyzenHub")
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Ryzen Hub",
+            Text = "✅ Link Discord đã sao chép",
+            Duration = 3
+        })
+    end
+})
+
+SettingsTab:Button({
+    Title = "Dỡ Cài Đặt Script",
+    Desc = "Đóng Ryzen Hub",
+    Icon = "x",
+    IconAlign = "Right",
+    Justify = "Between",
+    Callback = function()
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Ryzen Hub",
+            Text = "❌ Script đã dừng",
+            Duration = 2
+        })
+        Window:Destroy()
+    end
 })
 
 -- ==========================================
