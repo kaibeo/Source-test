@@ -322,12 +322,12 @@ local function Hop(eventType)
     end
 end
 
-Tab:Tag({
+tab5:Tag({
     Title = "V0.5 Beta Vesion",
     Color = Color3.fromRGB(100, 200, 100)
 })
 -- your tag
-local FPSTag = Window:Tag({
+local FPSTag = window:Tag({
     Title = "FPS: 0",
     Color = Color3.fromRGB(100, 150, 255),
 })
@@ -357,8 +357,9 @@ RunService.RenderStepped:Connect(function()
         lastUpdate = now
     end
 end)
-})
+
 WindUI:Notify({
     Title = "Ryzen Hub",
     Content = "Loading Script Success",
     Duration = 3
+})
