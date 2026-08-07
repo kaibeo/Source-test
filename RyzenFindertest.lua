@@ -53,31 +53,31 @@ Window:EditOpenButton({
 -- Tab 1
 local tab1 = Window:CreateTab({
     Title = "info",
-    Icon = ""
+    Icon = "info"
 })
 
 -- Tab 2
 local tab2 = Window:CreateTab({
     Title = "Status",
-    Icon = ""
+    Icon = "activity"
 })
 
 -- Tab 3
 local tab3 = Window:CreateTab({
     Title = "Hop Finder",
-    Icon = ""
+    Icon = "server"
 })
 
 -- Tab 4
 local tab4 = Window:CreateTab({
     Title = "Farm",
-    Icon = ""
+    Icon = "shovel"
 })
 
 -- Tab 5
 local tab5 = Window:CreateTab({
     Title = "Setting",
-    Icon = ""
+    Icon = "settings"
 })
 
 tab1:CreateButton({
