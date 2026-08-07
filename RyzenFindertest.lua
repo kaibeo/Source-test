@@ -51,12 +51,12 @@ Window:EditOpenButton({
 })
 
 -- ==========================================
--- TABS (FIX: Chỉ dùng Window:Tab() - xóa CreateTab() đi)
+-- TAB 1: INFO
 -- ==========================================
 
 local InfoTab = Window:Tab({
     Title = "Info",
-    Desc = "Info Hub",
+    Desc = "Information",
     Icon = "info",
     IconColor = Color3.fromHex("#ffffff"),
     IconShape = "Square",
@@ -66,13 +66,84 @@ local InfoTab = Window:Tab({
     Border = true,
 })
 
+-- Title
+InfoTab:Label({
+    Title = "📋 Ryzen Hub Information",
+    Desc = "Script information and details"
+})
+
+-- Information Section
+InfoTab:Label({
+    Title = "Owner",
+    Desc = "Kaibeo"
+})
+
+InfoTab:Label({
+    Title = "Developer",
+    Desc = "Dragon Toro"
+})
+
+InfoTab:Label({
+    Title = "Made By",
+    Desc = "RC Team"
+})
+
+InfoTab:Label({
+    Title = "Region",
+    Desc = "Vietnam (VN)"
+})
+
+InfoTab:Label({
+    Title = "City",
+    Desc = "Dong Nai"
+})
+
+InfoTab:Label({
+    Title = "Version",
+    Desc = "V0.5 Beta"
+})
+
+-- Copy Link Button
+InfoTab:Button({
+    Title = "Copy Discord Link",
+    Desc = "Copy discord invite link",
+    Icon = "copy",
+    IconAlign = "Right",
+    Justify = "Between",
+    Callback = function()
+        local HttpService = game:GetService("HttpService")
+        setclipboard("https://discord.gg/RyzenHub")
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Discord: Ryzen Community",
+            Text = "Discord link copied to clipboard!",
+            Duration = 3
+        })
+    end
+})
+
 -- ==========================================
--- HOP TAB
+-- TAB 2: STATUS
+-- ==========================================
+
+local StatusTab = Window:Tab({
+    Title = "Status",
+    Desc = "Game Status",
+    Icon = "activity",
+    IconColor = Color3.fromHex("#ffffff"),
+    IconShape = "Square",
+    IconThemed = true,
+    Locked = false,
+    ShowTabTitle = false,
+    Border = true,
+})
+
+-- ==========================================
+-- TAB 3: HOP FINDER
 -- ==========================================
 
 local HopTab = Window:Tab({
-    Title = "Hop Server",
-    Desc = "Click to join",
+    Title = "Hop Finder",
+    Desc = "Find and join servers",
     Icon = "server",
     IconColor = Color3.fromHex("#ffffff"),
     IconShape = "Square",
@@ -83,6 +154,11 @@ local HopTab = Window:Tab({
 })
 
 -- Island Finder
+HopTab:Label({
+    Title = "Islands - Full moon Finder",
+    Desc = ""
+})
+
 HopTab:Button({
     Title = "Full Moon",
     Desc = "Auto Join Full Moon",
@@ -128,6 +204,11 @@ HopTab:Button({
 })
 
 -- Haki Finder
+HopTab:Label({
+    Title = "Haki Legendary Finder",
+    Desc = ""
+})
+
 HopTab:Button({
     Title = "Haki Pure Red",
     Desc = "Auto Join Haki Pure Red",
@@ -162,6 +243,11 @@ HopTab:Button({
 })
 
 -- Sword Finder
+HopTab:Label({
+    Title = "Swords Legendary Finder",
+    Desc = ""
+})
+
 HopTab:Button({
     Title = "Sword Shizu",
     Desc = "Auto Join Sword Shizu",
@@ -196,6 +282,11 @@ HopTab:Button({
 })
 
 -- Boss Finder
+HopTab:Label({
+    Title = "Boss Finder",
+    Desc = ""
+})
+
 HopTab:Button({
     Title = "Darkbeard",
     Desc = "Auto Join Darkbeard",
@@ -263,6 +354,11 @@ HopTab:Button({
 })
 
 -- Event Finder
+HopTab:Label({
+    Title = "Event Finder",
+    Desc = ""
+})
+
 HopTab:Button({
     Title = "Pirate Raid",
     Desc = "Auto Join Pirate Raid",
@@ -286,13 +382,13 @@ HopTab:Button({
 })
 
 -- ==========================================
--- MAIN TAB
+-- TAB 4: FARM
 -- ==========================================
 
-local MainTab = Window:Tab({
-    Title = "Main",
-    Desc = "Main features",
-    Icon = "house",
+local FarmTab = Window:Tab({
+    Title = "Farm",
+    Desc = "Farm features",
+    Icon = "zap",
     IconColor = Color3.fromHex("#ffffff"),
     IconShape = "Square",
     IconThemed = true,
@@ -301,22 +397,43 @@ local MainTab = Window:Tab({
     Border = true,
 })
 
+-- ==========================================
+-- TAB 5: SETTINGS
+-- ==========================================
+
+local SettingsTab = Window:Tab({
+    Title = "Settings",
+    Desc = "Script settings",
+    Icon = "settings",
+    IconColor = Color3.fromHex("#ffffff"),
+    IconShape = "Square",
+    IconThemed = true,
+    Locked = false,
+    ShowTabTitle = false,
+    Border = true,
+})
+
+-- ==========================================
+-- API HOP FUNCTION
+-- ==========================================
+
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
-local RunService = game:GetService("RunService")
 local API_URL = "https://dragonstorostudiohop.up.railway.app"
 local Browser = ReplicatedStorage:WaitForChild("__ServerBrowser")
+
 local function Notify(text, time)
     pcall(function()
         game.StarterGui:SetCore("SendNotification", {
-            Title = "Api Hop Servers",
+            Title = "Ryzen Hub",
             Text = text,
             Duration = time or 5
         })
     end)
 end
+
 local function Hop(eventType)
     if not eventType then
         return
@@ -345,10 +462,10 @@ local function Hop(eventType)
     end  
     local servers = data["Make By RC team"] or {}  
     if data.total == 0 or #servers == 0 then  
-        Notify("The server is full; there are no servers available.\nHết Servers", 6)  
+        Notify("The server is full; there are no servers available.", 6)  
         return  
     end  
-    Notify("Tìm thấy "..#servers.." server", 3)  
+    Notify("Tìm thấy " .. #servers .. " server", 3)  
     local serverQueue = {}
     for i, server in ipairs(servers) do
         local joinId = server.joinId
@@ -384,7 +501,7 @@ local function Hop(eventType)
             TryJoin(targetId)            
             task.wait(0.3)           
             if CheckJoinSuccess() then
-                return -- Thoát ngay khi join thành công
+                return
             end            
             Notify("❌ Server đầy, chuyển tiếp...", 1)            
             task.wait(0.1)
@@ -409,8 +526,12 @@ local function Hop(eventType)
     end
 end
 
+-- ==========================================
+-- TAGS
+-- ==========================================
+
 Window:Tag({
-    Title = "V0.5 Beta Vesion",
+    Title = "V0.5 Beta Version",
     Color = Color3.fromRGB(100, 200, 100)
 })
 
@@ -418,17 +539,16 @@ local FPSTag = Window:Tag({
     Title = "FPS: 0",
     Color = Color3.fromRGB(100, 150, 255),
 })
- 
-local RunService = game:GetService("RunService")
-local lastUpdate = tick()
-local frameCount = 0
- 
+
+local lastUpdateTag = tick()
+local frameCountTag = 0
+
 RunService.RenderStepped:Connect(function()
-    frameCount = frameCount + 1
+    frameCountTag = frameCountTag + 1
     local now = tick()
     
-    if now - lastUpdate >= 1 then
-        local fps = math.floor(frameCount / (now - lastUpdate))
+    if now - lastUpdateTag >= 1 then
+        local fps = math.floor(frameCountTag / (now - lastUpdateTag))
         FPSTag:SetTitle("FPS: " .. fps)
         
         if fps >= 50 then
@@ -439,13 +559,17 @@ RunService.RenderStepped:Connect(function()
             FPSTag:SetColor(Color3.fromRGB(255, 0, 0))
         end
         
-        frameCount = 0
-        lastUpdate = now
+        frameCountTag = 0
+        lastUpdateTag = now
     end
 end)
 
+-- ==========================================
+-- STARTUP
+-- ==========================================
+
 WindUI:Notify({
     Title = "Ryzen Hub",
-    Content = "Loading Script Success",
+    Content = "✅ Loading Script Success",
     Duration = 3
 })
