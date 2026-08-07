@@ -1,219 +1,271 @@
-local _version = "1.6.66"
-local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+local Lumina = loadstring(game:HttpGet("https://raw.githubusercontent.com/ugmoddev/LuminaLibrary/refs/heads/main/LuminaLibrary.luau"))()
 
--- Tạo window
-local window = WindUI:CreateWindow({
+local Window = Lumina:CreateWindow({
     Title = "Ryzen Hub [ Hop Finder ]",
-    Subtitle = "By RC Team",
-    Size = UDim2.new(0, 600, 0, 400),
-    Transparency = 0.1,
-    Theme = "Dark"
+    Version = "v0.5 beta version",
+    Size = UDim2.new(0, 750, 0, 480)
 })
 
--- Tab 1
-local tab1 = window:CreateTab({
-    Title = "info",
-    Icon = ""
-})
+local MainTab = Window:MakeTab({ Title = "Hop Finder", Icon = "compass" })
+local InfoTab = Window:MakeTab({ Title = "Info", Icon = "home" })
+local SettingsTab = Window:MakeTab({ Title = "Settings", Icon = "settings" })
 
--- Tab 2
-local tab2 = window:CreateTab({
-    Title = "Status",
-    Icon = ""
-})
+local MiscGroup = Window:MakeDropdownTab({ Title = "Theme" })
+local ThemeTab = MiscGroup:MakeTab({ Title = "Theme Settings" })
 
--- Tab 3
-local tab3 = window:CreateTab({
-    Title = "Hop Finder",
-    Icon = ""
-})
+-- ==================== THEME TAB ====================
+ThemeTab:AddSection({ Title = "Presets" })
 
--- Tab 4
-local tab4 = window:CreateTab({
-    Title = "Farm",
-    Icon = ""
-})
+ThemeTab:AddLabel({ Text = "Choose a built-in theme" })
 
--- Tab 5
-local tab5 = window:CreateTab({
-    Title = "Setting",
-    Icon = ""
-})
-
-tab1:CreateButton({
-    Title = "Copy Discord Link",
-    Callback = function()
-        setclipboard("https://discord.gg/your-discord-link")
-        print("Discord link copied!")
+ThemeTab:AddDropdown({
+    Title = "Theme Preset",
+    Options = {
+    "Dark", "Light", "Midnight", "Forest", "Emerald", "Mint", "Sage",
+    "Ocean", "Sky", "DeepBlue", "Arctic", "Crimson", "Rose", "Cherry",
+    "Pink", "Blush", "Violet", "Lavender", "Plum", "Sunset", "Amber",
+    "Gold", "Peach", "Chocolate", "Coffee", "Cream", "PastelBlue",
+    "PastelPink", "PastelGreen", "PastelPurple", "NeonBlue", "NeonGreen",
+    "NeonPink", "NeonOrange", "Matrix", "Dracula", "Nord", "Solarized",
+    "Gruvbox", "Paper", "Monochrome", "Silver", "Graphite", "Sakura",
+    "Aurora", "Galaxy", "Candy", "Oceanic", "Desert", "Tropical", "Winter"
+    },
+    Default = "Dark",
+    Callback = function(selected)
+        Window:SetTheme(selected)
+        Lumina:Notify({ Title = "Theme", Text = "Switched to " .. selected .. " theme.", Duration = 2 })
     end
 })
 
-tab1:CreateLabel({
-    Title = "Ryzen Hub",
-    Text = "Advanced Blox Fruits Script developed by Vietnamese team"
+ThemeTab:AddSection({ Title = "Custom Colors (RGB 0-255)" })
+
+ThemeTab:AddLabel({ Text = "These only apply while the 'Custom' preset is active." })
+
+local function AddColorSliders(tab, label, themeKey, defaultColor)
+    tab:AddSection({ Title = label })
+    local r, g, b = math.floor(defaultColor.R * 255), math.floor(defaultColor.G * 255), math.floor(defaultColor.B * 255)
+
+    local function pushColor()
+        Window:SetCustomColor(themeKey, Color3.fromRGB(r, g, b))
+    end
+
+    tab:AddSlider({
+        Title = label .. " - Red",
+        Min = 0, Max = 255, Default = r,
+        Callback = function(v) r = v; pushColor() end
+    })
+    tab:AddSlider({
+        Title = label .. " - Green",
+        Min = 0, Max = 255, Default = g,
+        Callback = function(v) g = v; pushColor() end
+    })
+    tab:AddSlider({
+        Title = label .. " - Blue",
+        Min = 0, Max = 255, Default = b,
+        Callback = function(v) b = v; pushColor() end
+    })
+end
+
+AddColorSliders(ThemeTab, "Accent", "Accent", Color3.fromRGB(85, 170, 255))
+AddColorSliders(ThemeTab, "Background", "Main", Color3.fromRGB(30, 30, 35))
+AddColorSliders(ThemeTab, "Sidebar", "Sidebar", Color3.fromRGB(25, 25, 30))
+
+ThemeTab:AddSection({ Title = "Utility" })
+ThemeTab:AddButton({
+    Title = "Reset Custom Theme To Dark",
+    Callback = function()
+        Window:SetCustomColor("Main", Color3.fromRGB(30, 30, 35))
+        Window:SetCustomColor("Sidebar", Color3.fromRGB(25, 25, 30))
+        Window:SetCustomColor("Header", Color3.fromRGB(20, 20, 25))
+        Window:SetCustomColor("Accent", Color3.fromRGB(85, 170, 255))
+        Window:SetCustomColor("Element", Color3.fromRGB(40, 40, 45))
+        Window:SetCustomColor("Outline", Color3.fromRGB(60, 60, 65))
+        Lumina:Notify({ Title = "Theme", Text = "Custom theme reset.", Duration = 2 })
+    end
 })
 
-tab1:CreateLabel({
-    Title = "About",
-    Text = "Made by RC Team\n\nMembers:\nKaibeo\nDragon toro\n\nThis script is created and developed by Vietnamese developers"
-})
+-- ==================== HOP FINDER TAB ====================
+MainTab:AddSection({ Title = "Island - Full Moon Finder" })
 
--- Button Hop
-tab3:CreateLabel({
-    Title = "Island - Full Moon Finder",
-    Text = ""
-})
-
-tab3:CreateButton({
+MainTab:AddButton({
     Title = "Full Moon",
     Callback = function()
         Hop("fullmoon")
     end
 })
 
-tab3:CreateButton({
+MainTab:AddButton({
     Title = "Mirage Island",
     Callback = function()
         Hop("mirage")
     end
 })
 
-tab3:CreateButton({
+MainTab:AddButton({
     Title = "Prehistoric Island",
     Callback = function()
         Hop("prehistoric")
     end
 })
 
-tab3:CreateButton({
+MainTab:AddButton({
     Title = "Kitsune Island",
     Callback = function()
         Hop("kitsune")
     end
 })
 
--- Haki Finder
-tab3:CreateLabel({
-    Title = "Haki Finder",
-    Text = ""
-})
+MainTab:AddSection({ Title = "Haki Finder" })
 
-tab3:CreateButton({
+MainTab:AddButton({
     Title = "Haki Pure Red",
     Callback = function()
         Hop("hakipurered")
     end
 })
 
-tab3:CreateButton({
+MainTab:AddButton({
     Title = "Haki Snow White",
     Callback = function()
         Hop("hakisnowwhite")
     end
 })
 
-tab3:CreateButton({
+MainTab:AddButton({
     Title = "Haki Winter Sky",
     Callback = function()
         Hop("hakiwintersky")
     end
 })
 
--- Sword Finder
-tab3:CreateLabel({
-    Title = "Sword Finder",
-    Text = ""
-})
+MainTab:AddSection({ Title = "Sword Finder" })
 
-tab3:CreateButton({
+MainTab:AddButton({
     Title = "Sword Shizu",
     Callback = function()
         Hop("swordshizu")
     end
 })
 
-tab3:CreateButton({
+MainTab:AddButton({
     Title = "Sword Oroshi",
     Callback = function()
         Hop("swordoroshi")
     end
 })
 
-tab3:CreateButton({
+MainTab:AddButton({
     Title = "Sword Saishi",
     Callback = function()
         Hop("swordsaishi")
     end
 })
 
--- Boss Finder
-tab3:CreateLabel({
-    Title = "Boss Finder",
-    Text = ""
-})
+MainTab:AddSection({ Title = "Boss Finder" })
 
-tab3:CreateButton({
+MainTab:AddButton({
     Title = "Darkbeard",
     Callback = function()
         Hop("darkbeard")
     end
 })
 
-tab3:CreateButton({
+MainTab:AddButton({
     Title = "Soul Reaper",
     Callback = function()
         Hop("soulreaper")
     end
 })
 
-tab3:CreateButton({
+MainTab:AddButton({
     Title = "Cursed Captain",
     Callback = function()
         Hop("cursedcaptain")
     end
 })
 
-tab3:CreateButton({
+MainTab:AddButton({
     Title = "rip_indra",
     Callback = function()
         Hop("ripindra")
     end
 })
 
-tab3:CreateButton({
+MainTab:AddButton({
     Title = "Tyrant of the Skies",
     Callback = function()
         Hop("tyrantoftheskies")
     end
 })
 
-tab3:CreateButton({
+MainTab:AddButton({
     Title = "Dough King",
     Callback = function()
         Hop("doughking")
     end
 })
 
--- Event Finder
-tab3:CreateLabel({
-    Title = "Event Finder",
-    Text = ""
-})
+MainTab:AddSection({ Title = "Event Finder" })
 
-tab3:CreateButton({
+MainTab:AddButton({
     Title = "Pirate Raid",
     Callback = function()
         Hop("pirateraid")
     end
 })
 
-tab3:CreateButton({
+MainTab:AddButton({
     Title = "Fruits",
     Callback = function()
         Hop("fruits")
     end
 })
 
+-- ==================== INFO TAB ====================
+InfoTab:AddSection({ Title = "About" })
+
+InfoTab:AddLabel({ Text = "Ryzen Hub - Advanced Blox Fruits Script" })
+
+InfoTab:AddLabel({ Text = "Made by RC Team\n\nMembers:\n• Kaibeo\n• Dragon Toro\n\nDeveloped by Vietnamese Team" })
+
+InfoTab:AddSection({ Title = "Server Information" })
+
+InfoTab:AddButton({
+    Title = "Copy Server Job-Id",
+    Callback = function()
+        local jobId = game.JobId ~= "" and game.JobId or "Studio"
+        setclipboard(jobId)
+        Lumina:Notify({ Title = "Copied", Text = "Job-Id copied to clipboard!", Duration = 3 })
+    end
+})
+
+InfoTab:AddButton({
+    Title = "Copy Discord Link",
+    Callback = function()
+        setclipboard("https://discord.gg/your-discord-link")
+        Lumina:Notify({ Title = "Discord", Text = "Discord link copied to clipboard!", Duration = 3 })
+    end
+})
+
+-- ==================== SETTINGS TAB ====================
+SettingsTab:AddSection({ Title = "UI Configuration" })
+
+SettingsTab:AddButton({
+    Title = "Unload UI",
+    Callback = function()
+        Lumina:Notify({ Title = "Unloaded", Text = "Destroying UI...", Duration = 2 })
+        task.wait(2)
+        -- Destroy UI
+    end
+})
+
+SettingsTab:AddSection({ Title = "Info" })
+
+SettingsTab:AddLabel({
+    Text = "Ryzen Hub Premium v1.6.66\nV0.5 Beta Version"
+})
+
+-- ==================== HOP FUNCTION ====================
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -221,21 +273,25 @@ local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local API_URL = "https://dragonstorostudiohop.up.railway.app"
 local Browser = ReplicatedStorage:WaitForChild("__ServerBrowser")
+
 local function Notify(text, time)
     pcall(function()
-        game.StarterGui:SetCore("SendNotification", {
-            Title = "Api Hop Servers",
+        Lumina:Notify({
+            Title = "Hop System",
             Text = text,
             Duration = time or 5
         })
     end)
 end
+
 local function Hop(eventType)
     if not eventType then
         return
     end
+    
     local url = API_URL .. "/?key=" .. HttpService:UrlEncode(eventType)      
     Notify("Đang lấy danh sách server...", 3)  
+    
     local ok, res = pcall(function()  
         return request({  
             Url = url,  
@@ -245,23 +301,30 @@ local function Hop(eventType)
             }  
         })  
     end)  
+    
     if not ok or not res or not res.Body then  
-        Notify("Không thể kết nối API", 5)  
+        Notify("❌ Không thể kết nối API", 5)  
         return  
     end  
+    
     local success, data = pcall(function()  
         return HttpService:JSONDecode(res.Body)  
     end)  
+    
     if not success then  
-        Notify("Lỗi đọc dữ liệu API", 5)  
+        Notify("❌ Lỗi đọc dữ liệu API", 5)  
         return  
     end  
+    
     local servers = data["Make By RC team"] or {}  
+    
     if data.total == 0 or #servers == 0 then  
-        Notify("The server is full; there are no servers available.\nHết Servers", 6)  
+        Notify("❌ Hết Servers - Server full", 6)  
         return  
     end  
-    Notify("Tìm thấy "..#servers.." server", 3)  
+    
+    Notify("✅ Tìm thấy " .. #servers .. " server", 3)  
+    
     local serverQueue = {}
     for i, server in ipairs(servers) do
         local joinId = server.joinId
@@ -269,12 +332,15 @@ local function Hop(eventType)
             table.insert(serverQueue, joinId)
         end
     end
+    
     if #serverQueue == 0 then
-        Notify("Không có server khả dụng", 5)
+        Notify("❌ Không có server khả dụng", 5)
         return
     end
+    
     local joinSuccess = false
     local currentJobId = game.JobId    
+    
     local function CheckJoinSuccess()
         if game.JobId ~= currentJobId then
             joinSuccess = true
@@ -283,6 +349,7 @@ local function Hop(eventType)
         end
         return false
     end
+    
     local function TryJoin(joinId)
         if joinSuccess then return false end        
         Notify("🔄 Đang join: " .. joinId, 2)        
@@ -291,13 +358,14 @@ local function Hop(eventType)
         end)        
         return true
     end
+    
     local function StartJoining()
         for index, targetId in ipairs(serverQueue) do
             if joinSuccess then break end            
             TryJoin(targetId)            
             task.wait(0.3)           
             if CheckJoinSuccess() then
-                return -- Thoát ngay khi join thành công
+                return
             end            
             Notify("❌ Server đầy, chuyển tiếp...", 1)            
             task.wait(0.1)
@@ -306,8 +374,10 @@ local function Hop(eventType)
             Notify("❌ Hết server khả dụng", 5)
         end
     end
+    
     local joinCoroutine = coroutine.create(StartJoining)
     coroutine.resume(joinCoroutine)
+    
     local connection
     connection = RunService.Heartbeat:Connect(function()
         if CheckJoinSuccess() then
@@ -315,6 +385,7 @@ local function Hop(eventType)
             return
         end
     end)
+    
     task.wait(30)
     if not joinSuccess then
         connection:Disconnect()
@@ -322,44 +393,29 @@ local function Hop(eventType)
     end
 end
 
-tab5:Tag({
-    Title = "V0.5 Beta Vesion",
-    Color = Color3.fromRGB(100, 200, 100)
-})
--- your tag
-local FPSTag = window:Tag({
-    Title = "FPS: 0",
-    Color = Color3.fromRGB(100, 150, 255),
-})
- 
-local RunService = game:GetService("RunService")
+-- ==================== FPS COUNTER ====================
+local FPS = 0
 local lastUpdate = tick()
 local frameCount = 0
- 
+
 RunService.RenderStepped:Connect(function()
     frameCount = frameCount + 1
     local now = tick()
     
     if now - lastUpdate >= 1 then
-        local fps = math.floor(frameCount / (now - lastUpdate))
-        FPSTag:SetTitle("FPS: " .. fps)
-        
-        if fps >= 50 then
-            FPSTag:SetColor(Color3.fromRGB(0, 255, 0)) -- Green
-        elseif fps >= 30 then
-            FPSTag:SetColor(Color3.fromRGB(255, 200, 0)) -- Yellow
-        else
-            FPSTag:SetColor(Color3.fromRGB(255, 0, 0)) -- Red
-        end
-        
-        
+        FPS = math.floor(frameCount / (now - lastUpdate))
         frameCount = 0
         lastUpdate = now
     end
 end)
 
-WindUI:Notify({
+-- ==================== STARTUP NOTIFICATION ====================
+Lumina:Notify({
     Title = "Ryzen Hub",
-    Content = "Loading Script Success",
-    Duration = 3
+    Text = "✅ Loading Script Success v" .. _version,
+    Duration = 5
 })
+
+print("🚀 Ryzen Hub loaded successfully!")
+print("📊 Version: v" .. _version)
+print("💡 Using Lumina UI Library")
