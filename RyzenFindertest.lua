@@ -1,271 +1,259 @@
-local Lumina = loadstring(game:HttpGet("https://raw.githubusercontent.com/ugmoddev/LuminaLibrary/refs/heads/main/LuminaLibrary.luau"))()
+local _version = "1.6.63"
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/download/" .. _version .. "/main.lua"))()
 
-local Window = Lumina:CreateWindow({
+WindUI:AddTheme({
+    Name = "Dark",
+    Accent = Color3.fromHex("#18181b"),
+    Background = Color3.fromHex("#101010"),
+    Outline = Color3.fromHex("#FFFFFF"),
+    Text = Color3.fromHex("#FFFFFF"),
+    Placeholder = Color3.fromHex("#7a7a7a"),
+    Button = Color3.fromHex("#52525b"),
+    Icon = Color3.fromHex("#a1a1aa"),
+})
+
+local Window = WindUI:CreateWindow({
     Title = "Ryzen Hub [ Hop Finder ]",
-    Version = "v0.5 beta version",
-    Size = UDim2.new(0, 750, 0, 480)
-})
-
-local MainTab = Window:MakeTab({ Title = "Hop Finder", Icon = "compass" })
-local InfoTab = Window:MakeTab({ Title = "Info", Icon = "home" })
-local SettingsTab = Window:MakeTab({ Title = "Settings", Icon = "settings" })
-
-local MiscGroup = Window:MakeDropdownTab({ Title = "Theme" })
-local ThemeTab = MiscGroup:MakeTab({ Title = "Theme Settings" })
-
--- ==================== THEME TAB ====================
-ThemeTab:AddSection({ Title = "Presets" })
-
-ThemeTab:AddLabel({ Text = "Choose a built-in theme" })
-
-ThemeTab:AddDropdown({
-    Title = "Theme Preset",
-    Options = {
-    "Dark", "Light", "Midnight", "Forest", "Emerald", "Mint", "Sage",
-    "Ocean", "Sky", "DeepBlue", "Arctic", "Crimson", "Rose", "Cherry",
-    "Pink", "Blush", "Violet", "Lavender", "Plum", "Sunset", "Amber",
-    "Gold", "Peach", "Chocolate", "Coffee", "Cream", "PastelBlue",
-    "PastelPink", "PastelGreen", "PastelPurple", "NeonBlue", "NeonGreen",
-    "NeonPink", "NeonOrange", "Matrix", "Dracula", "Nord", "Solarized",
-    "Gruvbox", "Paper", "Monochrome", "Silver", "Graphite", "Sakura",
-    "Aurora", "Galaxy", "Candy", "Oceanic", "Desert", "Tropical", "Winter"
+    Icon = "badge-check",
+    Author = "Make By RC Team",
+    Folder = "MySuperHub",
+    Size = UDim2.fromOffset(580, 460),
+    MinSize = Vector2.new(560, 560),
+    MaxSize = Vector2.new(850, 560),
+    Transparent = true,
+    Theme = "Dark",
+    Resizable = true,
+    SideBarWidth = 200,
+    BackgroundImageTransparency = 0.65,
+    HideSearchBar = true,
+    ScrollBarEnabled = false,
+    User = {
+        Enabled = true,
+        Anonymous = false,
+        Callback = function()
+            print("Join My Discord :3")
+        end,
     },
-    Default = "Dark",
-    Callback = function(selected)
-        Window:SetTheme(selected)
-        Lumina:Notify({ Title = "Theme", Text = "Switched to " .. selected .. " theme.", Duration = 2 })
-    end
 })
 
-ThemeTab:AddSection({ Title = "Custom Colors (RGB 0-255)" })
+Window:EditOpenButton({
+    Title = "Ryzen Hub Open",
+    Icon = "file-terminal",
+    CornerRadius = UDim.new(0, 16),
+    StrokeThickness = 2,
+    Color = ColorSequence.new(
+        Color3.fromHex("#7A73A1"),
+        Color3.fromHex("#44424F")
+    ),
+    OnlyMobile = false,
+    Enabled = true,
+    Draggable = true,
+})
 
-ThemeTab:AddLabel({ Text = "These only apply while the 'Custom' preset is active." })
+-- Tab 1
+local tab1 = Window:CreateTab({
+    Title = "info",
+    Icon = ""
+})
 
-local function AddColorSliders(tab, label, themeKey, defaultColor)
-    tab:AddSection({ Title = label })
-    local r, g, b = math.floor(defaultColor.R * 255), math.floor(defaultColor.G * 255), math.floor(defaultColor.B * 255)
+-- Tab 2
+local tab2 = Window:CreateTab({
+    Title = "Status",
+    Icon = ""
+})
 
-    local function pushColor()
-        Window:SetCustomColor(themeKey, Color3.fromRGB(r, g, b))
-    end
+-- Tab 3
+local tab3 = Window:CreateTab({
+    Title = "Hop Finder",
+    Icon = ""
+})
 
-    tab:AddSlider({
-        Title = label .. " - Red",
-        Min = 0, Max = 255, Default = r,
-        Callback = function(v) r = v; pushColor() end
-    })
-    tab:AddSlider({
-        Title = label .. " - Green",
-        Min = 0, Max = 255, Default = g,
-        Callback = function(v) g = v; pushColor() end
-    })
-    tab:AddSlider({
-        Title = label .. " - Blue",
-        Min = 0, Max = 255, Default = b,
-        Callback = function(v) b = v; pushColor() end
-    })
-end
+-- Tab 4
+local tab4 = Window:CreateTab({
+    Title = "Farm",
+    Icon = ""
+})
 
-AddColorSliders(ThemeTab, "Accent", "Accent", Color3.fromRGB(85, 170, 255))
-AddColorSliders(ThemeTab, "Background", "Main", Color3.fromRGB(30, 30, 35))
-AddColorSliders(ThemeTab, "Sidebar", "Sidebar", Color3.fromRGB(25, 25, 30))
+-- Tab 5
+local tab5 = Window:CreateTab({
+    Title = "Setting",
+    Icon = ""
+})
 
-ThemeTab:AddSection({ Title = "Utility" })
-ThemeTab:AddButton({
-    Title = "Reset Custom Theme To Dark",
+tab1:CreateButton({
+    Title = "Copy Discord Link",
     Callback = function()
-        Window:SetCustomColor("Main", Color3.fromRGB(30, 30, 35))
-        Window:SetCustomColor("Sidebar", Color3.fromRGB(25, 25, 30))
-        Window:SetCustomColor("Header", Color3.fromRGB(20, 20, 25))
-        Window:SetCustomColor("Accent", Color3.fromRGB(85, 170, 255))
-        Window:SetCustomColor("Element", Color3.fromRGB(40, 40, 45))
-        Window:SetCustomColor("Outline", Color3.fromRGB(60, 60, 65))
-        Lumina:Notify({ Title = "Theme", Text = "Custom theme reset.", Duration = 2 })
+        setclipboard("https://discord.gg/your-discord-link")
+        print("Discord link copied!")
     end
 })
 
--- ==================== HOP FINDER TAB ====================
-MainTab:AddSection({ Title = "Island - Full Moon Finder" })
+tab1:CreateLabel({
+    Title = "Ryzen Hub",
+    Text = "Advanced Blox Fruits Script developed by Vietnamese team"
+})
 
-MainTab:AddButton({
+tab1:CreateLabel({
+    Title = "About",
+    Text = "Made by RC Team\n\nMembers:\nKaibeo\nDragon toro\n\nThis script is created and developed by Vietnamese developers"
+})
+
+-- Button Hop
+tab3:CreateLabel({
+    Title = "Island - Full Moon Finder",
+    Text = ""
+})
+
+tab3:CreateButton({
     Title = "Full Moon",
     Callback = function()
         Hop("fullmoon")
     end
 })
 
-MainTab:AddButton({
+tab3:CreateButton({
     Title = "Mirage Island",
     Callback = function()
         Hop("mirage")
     end
 })
 
-MainTab:AddButton({
+tab3:CreateButton({
     Title = "Prehistoric Island",
     Callback = function()
         Hop("prehistoric")
     end
 })
 
-MainTab:AddButton({
+tab3:CreateButton({
     Title = "Kitsune Island",
     Callback = function()
         Hop("kitsune")
     end
 })
 
-MainTab:AddSection({ Title = "Haki Finder" })
+-- Haki Finder
+tab3:CreateLabel({
+    Title = "Haki Finder",
+    Text = ""
+})
 
-MainTab:AddButton({
+tab3:CreateButton({
     Title = "Haki Pure Red",
     Callback = function()
         Hop("hakipurered")
     end
 })
 
-MainTab:AddButton({
+tab3:CreateButton({
     Title = "Haki Snow White",
     Callback = function()
         Hop("hakisnowwhite")
     end
 })
 
-MainTab:AddButton({
+tab3:CreateButton({
     Title = "Haki Winter Sky",
     Callback = function()
         Hop("hakiwintersky")
     end
 })
 
-MainTab:AddSection({ Title = "Sword Finder" })
+-- Sword Finder
+tab3:CreateLabel({
+    Title = "Sword Finder",
+    Text = ""
+})
 
-MainTab:AddButton({
+tab3:CreateButton({
     Title = "Sword Shizu",
     Callback = function()
         Hop("swordshizu")
     end
 })
 
-MainTab:AddButton({
+tab3:CreateButton({
     Title = "Sword Oroshi",
     Callback = function()
         Hop("swordoroshi")
     end
 })
 
-MainTab:AddButton({
+tab3:CreateButton({
     Title = "Sword Saishi",
     Callback = function()
         Hop("swordsaishi")
     end
 })
 
-MainTab:AddSection({ Title = "Boss Finder" })
+-- Boss Finder
+tab3:CreateLabel({
+    Title = "Boss Finder",
+    Text = ""
+})
 
-MainTab:AddButton({
+tab3:CreateButton({
     Title = "Darkbeard",
     Callback = function()
         Hop("darkbeard")
     end
 })
 
-MainTab:AddButton({
+tab3:CreateButton({
     Title = "Soul Reaper",
     Callback = function()
         Hop("soulreaper")
     end
 })
 
-MainTab:AddButton({
+tab3:CreateButton({
     Title = "Cursed Captain",
     Callback = function()
         Hop("cursedcaptain")
     end
 })
 
-MainTab:AddButton({
+tab3:CreateButton({
     Title = "rip_indra",
     Callback = function()
         Hop("ripindra")
     end
 })
 
-MainTab:AddButton({
+tab3:CreateButton({
     Title = "Tyrant of the Skies",
     Callback = function()
         Hop("tyrantoftheskies")
     end
 })
 
-MainTab:AddButton({
+tab3:CreateButton({
     Title = "Dough King",
     Callback = function()
         Hop("doughking")
     end
 })
 
-MainTab:AddSection({ Title = "Event Finder" })
+-- Event Finder
+tab3:CreateLabel({
+    Title = "Event Finder",
+    Text = ""
+})
 
-MainTab:AddButton({
+tab3:CreateButton({
     Title = "Pirate Raid",
     Callback = function()
         Hop("pirateraid")
     end
 })
 
-MainTab:AddButton({
+tab3:CreateButton({
     Title = "Fruits",
     Callback = function()
         Hop("fruits")
     end
 })
 
--- ==================== INFO TAB ====================
-InfoTab:AddSection({ Title = "About" })
-
-InfoTab:AddLabel({ Text = "Ryzen Hub - Advanced Blox Fruits Script" })
-
-InfoTab:AddLabel({ Text = "Made by RC Team\n\nMembers:\n• Kaibeo\n• Dragon Toro\n\nDeveloped by Vietnamese Team" })
-
-InfoTab:AddSection({ Title = "Server Information" })
-
-InfoTab:AddButton({
-    Title = "Copy Server Job-Id",
-    Callback = function()
-        local jobId = game.JobId ~= "" and game.JobId or "Studio"
-        setclipboard(jobId)
-        Lumina:Notify({ Title = "Copied", Text = "Job-Id copied to clipboard!", Duration = 3 })
-    end
-})
-
-InfoTab:AddButton({
-    Title = "Copy Discord Link",
-    Callback = function()
-        setclipboard("https://discord.gg/your-discord-link")
-        Lumina:Notify({ Title = "Discord", Text = "Discord link copied to clipboard!", Duration = 3 })
-    end
-})
-
--- ==================== SETTINGS TAB ====================
-SettingsTab:AddSection({ Title = "UI Configuration" })
-
-SettingsTab:AddButton({
-    Title = "Unload UI",
-    Callback = function()
-        Lumina:Notify({ Title = "Unloaded", Text = "Destroying UI...", Duration = 2 })
-        task.wait(2)
-        -- Destroy UI
-    end
-})
-
-SettingsTab:AddSection({ Title = "Info" })
-
-SettingsTab:AddLabel({
-    Text = "Ryzen Hub Premium v1.6.66\nV0.5 Beta Version"
-})
-
--- ==================== HOP FUNCTION ====================
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -273,25 +261,21 @@ local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local API_URL = "https://dragonstorostudiohop.up.railway.app"
 local Browser = ReplicatedStorage:WaitForChild("__ServerBrowser")
-
 local function Notify(text, time)
     pcall(function()
-        Lumina:Notify({
-            Title = "Hop System",
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Api Hop Servers",
             Text = text,
             Duration = time or 5
         })
     end)
 end
-
 local function Hop(eventType)
     if not eventType then
         return
     end
-    
     local url = API_URL .. "/?key=" .. HttpService:UrlEncode(eventType)      
     Notify("Đang lấy danh sách server...", 3)  
-    
     local ok, res = pcall(function()  
         return request({  
             Url = url,  
@@ -301,30 +285,23 @@ local function Hop(eventType)
             }  
         })  
     end)  
-    
     if not ok or not res or not res.Body then  
-        Notify("❌ Không thể kết nối API", 5)  
+        Notify("Không thể kết nối API", 5)  
         return  
     end  
-    
     local success, data = pcall(function()  
         return HttpService:JSONDecode(res.Body)  
     end)  
-    
     if not success then  
-        Notify("❌ Lỗi đọc dữ liệu API", 5)  
+        Notify("Lỗi đọc dữ liệu API", 5)  
         return  
     end  
-    
     local servers = data["Make By RC team"] or {}  
-    
     if data.total == 0 or #servers == 0 then  
-        Notify("❌ Hết Servers - Server full", 6)  
+        Notify("The server is full; there are no servers available.\nHết Servers", 6)  
         return  
     end  
-    
-    Notify("✅ Tìm thấy " .. #servers .. " server", 3)  
-    
+    Notify("Tìm thấy "..#servers.." server", 3)  
     local serverQueue = {}
     for i, server in ipairs(servers) do
         local joinId = server.joinId
@@ -332,15 +309,12 @@ local function Hop(eventType)
             table.insert(serverQueue, joinId)
         end
     end
-    
     if #serverQueue == 0 then
-        Notify("❌ Không có server khả dụng", 5)
+        Notify("Không có server khả dụng", 5)
         return
     end
-    
     local joinSuccess = false
     local currentJobId = game.JobId    
-    
     local function CheckJoinSuccess()
         if game.JobId ~= currentJobId then
             joinSuccess = true
@@ -349,7 +323,6 @@ local function Hop(eventType)
         end
         return false
     end
-    
     local function TryJoin(joinId)
         if joinSuccess then return false end        
         Notify("🔄 Đang join: " .. joinId, 2)        
@@ -358,14 +331,13 @@ local function Hop(eventType)
         end)        
         return true
     end
-    
     local function StartJoining()
         for index, targetId in ipairs(serverQueue) do
             if joinSuccess then break end            
             TryJoin(targetId)            
             task.wait(0.3)           
             if CheckJoinSuccess() then
-                return
+                return -- Thoát ngay khi join thành công
             end            
             Notify("❌ Server đầy, chuyển tiếp...", 1)            
             task.wait(0.1)
@@ -374,10 +346,8 @@ local function Hop(eventType)
             Notify("❌ Hết server khả dụng", 5)
         end
     end
-    
     local joinCoroutine = coroutine.create(StartJoining)
     coroutine.resume(joinCoroutine)
-    
     local connection
     connection = RunService.Heartbeat:Connect(function()
         if CheckJoinSuccess() then
@@ -385,7 +355,6 @@ local function Hop(eventType)
             return
         end
     end)
-    
     task.wait(30)
     if not joinSuccess then
         connection:Disconnect()
@@ -393,29 +362,44 @@ local function Hop(eventType)
     end
 end
 
--- ==================== FPS COUNTER ====================
-local FPS = 0
+Window:Tag({
+    Title = "V0.5 Beta Vesion",
+    Color = Color3.fromRGB(100, 200, 100)
+})
+-- your tag
+local FPSTag = Window:Tag({
+    Title = "FPS: 0",
+    Color = Color3.fromRGB(100, 150, 255),
+})
+ 
+local RunService = game:GetService("RunService")
 local lastUpdate = tick()
 local frameCount = 0
-
+ 
 RunService.RenderStepped:Connect(function()
     frameCount = frameCount + 1
     local now = tick()
     
     if now - lastUpdate >= 1 then
-        FPS = math.floor(frameCount / (now - lastUpdate))
+        local fps = math.floor(frameCount / (now - lastUpdate))
+        FPSTag:SetTitle("FPS: " .. fps)
+        
+        if fps >= 50 then
+            FPSTag:SetColor(Color3.fromRGB(0, 255, 0)) -- Green
+        elseif fps >= 30 then
+            FPSTag:SetColor(Color3.fromRGB(255, 200, 0)) -- Yellow
+        else
+            FPSTag:SetColor(Color3.fromRGB(255, 0, 0)) -- Red
+        end
+        
+        
         frameCount = 0
         lastUpdate = now
     end
 end)
 
--- ==================== STARTUP NOTIFICATION ====================
-Lumina:Notify({
+WindUI:Notify({
     Title = "Ryzen Hub",
-    Text = "✅ Loading Script Success v" .. _version,
-    Duration = 5
+    Content = "Loading Script Success",
+    Duration = 3
 })
-
-print("🚀 Ryzen Hub loaded successfully!")
-print("📊 Version: v" .. _version)
-print("💡 Using Lumina UI Library")
