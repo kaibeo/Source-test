@@ -80,178 +80,255 @@ local tab5 = Window:CreateTab({
     Icon = "settings"
 })
 
-tab1:CreateButton({
-    Title = "Copy Discord Link",
-    Callback = function()
-        setclipboard("https://discord.gg/your-discord-link")
-        print("Discord link copied!")
-    end
+-- ==========================================
+-- TABS
+-- ==========================================
+
+local InfoTab = Window:Tab({
+    Title = "Info",
+    Desc = "Info Hub",
+    Icon = "info",
+    IconColor = Color3.fromHex("#ffffff"),
+    IconShape = "Square",
+    IconThemed = true,
+    Locked = false,
+    ShowTabTitle = false,
+    Border = true,
 })
 
-tab1:CreateLabel({
-    Title = "Ryzen Hub",
-    Text = "Advanced Blox Fruits Script developed by Vietnamese team"
+-- ==========================================
+-- HOP TAB
+-- ==========================================
+
+local HopTab = Window:Tab({
+    Title = "Hop Server",
+    Desc = "Click to join",
+    Icon = "server",
+    IconColor = Color3.fromHex("#ffffff"),
+    IconShape = "Square",
+    IconThemed = true,
+    Locked = false,
+    ShowTabTitle = false,
+    Border = true,
 })
 
-tab1:CreateLabel({
-    Title = "About",
-    Text = "Made by RC Team\n\nMembers:\nKaibeo\nDragon toro\n\nThis script is created and developed by Vietnamese developers"
-})
-
--- Button Hop
-tab3:CreateLabel({
-    Title = "Island - Full Moon Finder",
-    Text = ""
-})
-
-tab3:CreateButton({
+-- Island Finder
+HopTab:Button({
     Title = "Full Moon",
+    Desc = "Auto Join Full Moon",
+    Icon = "moon",
+    IconAlign = "Right",
+    Justify = "Between",
     Callback = function()
         Hop("fullmoon")
     end
 })
 
-tab3:CreateButton({
+HopTab:Button({
     Title = "Mirage Island",
+    Desc = "Auto Join Mirage Island",
+    Icon = "map",
+    IconAlign = "Right",
+    Justify = "Between",
     Callback = function()
         Hop("mirage")
     end
 })
 
-tab3:CreateButton({
+HopTab:Button({
     Title = "Prehistoric Island",
+    Desc = "Auto Join Prehistoric Island",
+    Icon = "bone",
+    IconAlign = "Right",
+    Justify = "Between",
     Callback = function()
         Hop("prehistoric")
     end
 })
 
-tab3:CreateButton({
+HopTab:Button({
     Title = "Kitsune Island",
+    Desc = "Auto Join Kitsune Island",
+    Icon = "zap",
+    IconAlign = "Right",
+    Justify = "Between",
     Callback = function()
         Hop("kitsune")
     end
 })
 
 -- Haki Finder
-tab3:CreateLabel({
-    Title = "Haki Finder",
-    Text = ""
-})
-
-tab3:CreateButton({
+HopTab:Button({
     Title = "Haki Pure Red",
+    Desc = "Auto Join Haki Pure Red",
+    Icon = "zap",
+    IconAlign = "Right",
+    Justify = "Between",
     Callback = function()
         Hop("hakipurered")
     end
 })
 
-tab3:CreateButton({
+HopTab:Button({
     Title = "Haki Snow White",
+    Desc = "Auto Join Haki Snow White",
+    Icon = "zap",
+    IconAlign = "Right",
+    Justify = "Between",
     Callback = function()
         Hop("hakisnowwhite")
     end
 })
 
-tab3:CreateButton({
+HopTab:Button({
     Title = "Haki Winter Sky",
+    Desc = "Auto Join Haki Winter Sky",
+    Icon = "zap",
+    IconAlign = "Right",
+    Justify = "Between",
     Callback = function()
         Hop("hakiwintersky")
     end
 })
 
 -- Sword Finder
-tab3:CreateLabel({
-    Title = "Sword Finder",
-    Text = ""
-})
-
-tab3:CreateButton({
+HopTab:Button({
     Title = "Sword Shizu",
+    Desc = "Auto Join Sword Shizu",
+    Icon = "sword",
+    IconAlign = "Right",
+    Justify = "Between",
     Callback = function()
         Hop("swordshizu")
     end
 })
 
-tab3:CreateButton({
+HopTab:Button({
     Title = "Sword Oroshi",
+    Desc = "Auto Join Sword Oroshi",
+    Icon = "sword",
+    IconAlign = "Right",
+    Justify = "Between",
     Callback = function()
         Hop("swordoroshi")
     end
 })
 
-tab3:CreateButton({
+HopTab:Button({
     Title = "Sword Saishi",
+    Desc = "Auto Join Sword Saishi",
+    Icon = "sword",
+    IconAlign = "Right",
+    Justify = "Between",
     Callback = function()
         Hop("swordsaishi")
     end
 })
 
 -- Boss Finder
-tab3:CreateLabel({
-    Title = "Boss Finder",
-    Text = ""
-})
-
-tab3:CreateButton({
+HopTab:Button({
     Title = "Darkbeard",
+    Desc = "Auto Join Darkbeard",
+    Icon = "skull",
+    IconAlign = "Right",
+    Justify = "Between",
     Callback = function()
         Hop("darkbeard")
     end
 })
 
-tab3:CreateButton({
+HopTab:Button({
     Title = "Soul Reaper",
+    Desc = "Auto Join Soul Reaper",
+    Icon = "skull",
+    IconAlign = "Right",
+    Justify = "Between",
     Callback = function()
         Hop("soulreaper")
     end
 })
 
-tab3:CreateButton({
+HopTab:Button({
     Title = "Cursed Captain",
+    Desc = "Auto Join Cursed Captain",
+    Icon = "skull",
+    IconAlign = "Right",
+    Justify = "Between",
     Callback = function()
         Hop("cursedcaptain")
     end
 })
 
-tab3:CreateButton({
+HopTab:Button({
     Title = "rip_indra",
+    Desc = "Auto Join rip_indra",
+    Icon = "skull",
+    IconAlign = "Right",
+    Justify = "Between",
     Callback = function()
         Hop("ripindra")
     end
 })
 
-tab3:CreateButton({
+HopTab:Button({
     Title = "Tyrant of the Skies",
+    Desc = "Auto Join Tyrant of the Skies",
+    Icon = "skull",
+    IconAlign = "Right",
+    Justify = "Between",
     Callback = function()
         Hop("tyrantoftheskies")
     end
 })
 
-tab3:CreateButton({
+HopTab:Button({
     Title = "Dough King",
+    Desc = "Auto Join Dough King",
+    Icon = "skull",
+    IconAlign = "Right",
+    Justify = "Between",
     Callback = function()
         Hop("doughking")
     end
 })
 
 -- Event Finder
-tab3:CreateLabel({
-    Title = "Event Finder",
-    Text = ""
-})
-
-tab3:CreateButton({
+HopTab:Button({
     Title = "Pirate Raid",
+    Desc = "Auto Join Pirate Raid",
+    Icon = "flag",
+    IconAlign = "Right",
+    Justify = "Between",
     Callback = function()
         Hop("pirateraid")
     end
 })
 
-tab3:CreateButton({
-    Title = "Fruits",
+HopTab:Button({
+    Title = "Fruits Event",
+    Desc = "Auto Join Fruits Event",
+    Icon = "apple",
+    IconAlign = "Right",
+    Justify = "Between",
     Callback = function()
         Hop("fruits")
     end
+})
+
+-- ==========================================
+-- MAIN TAB
+-- ==========================================
+
+local MainTab = Window:Tab({
+    Title = "Main",
+    Desc = "Main features",
+    Icon = "house",
+    IconColor = Color3.fromHex("#ffffff"),
+    IconShape = "Square",
+    IconThemed = true,
+    Locked = false,
+    ShowTabTitle = false,
+    Border = true,
 })
 
 local TeleportService = game:GetService("TeleportService")
@@ -366,7 +443,7 @@ Window:Tag({
     Title = "V0.5 Beta Vesion",
     Color = Color3.fromRGB(100, 200, 100)
 })
--- your tag
+
 local FPSTag = Window:Tag({
     Title = "FPS: 0",
     Color = Color3.fromRGB(100, 150, 255),
@@ -385,13 +462,12 @@ RunService.RenderStepped:Connect(function()
         FPSTag:SetTitle("FPS: " .. fps)
         
         if fps >= 50 then
-            FPSTag:SetColor(Color3.fromRGB(0, 255, 0)) -- Green
+            FPSTag:SetColor(Color3.fromRGB(0, 255, 0))
         elseif fps >= 30 then
-            FPSTag:SetColor(Color3.fromRGB(255, 200, 0)) -- Yellow
+            FPSTag:SetColor(Color3.fromRGB(255, 200, 0))
         else
-            FPSTag:SetColor(Color3.fromRGB(255, 0, 0)) -- Red
+            FPSTag:SetColor(Color3.fromRGB(255, 0, 0))
         end
-        
         
         frameCount = 0
         lastUpdate = now
