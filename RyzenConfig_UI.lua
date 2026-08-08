@@ -318,11 +318,19 @@ AvatarFrame.Parent = TopBar
 corner(AvatarFrame, 18)
 stroke(AvatarFrame, CONFIG.AccentColor, 1.5, 0.2)
 
-local userId = LocalPlayer.UserId
-local thumbType = Enum.ThumbnailType.HeadShot
-local thumbSize = Enum.ThumbnailSize.Size100x100
-local content, isReady = Players:GetUserThumbnailAsync(userId, thumbType, thumbSize)
-AvatarFrame.Image = content
+-- Load avatar KHÔNG đồng bộ để tránh treo UI nếu API thumbnail chậm/lỗi
+task.spawn(function()
+    local ok, content = pcall(function()
+        return Players:GetUserThumbnailAsync(
+            LocalPlayer.UserId,
+            Enum.ThumbnailType.HeadShot,
+            Enum.ThumbnailSize.Size100x100
+        )
+    end)
+    if ok and content then
+        AvatarFrame.Image = content
+    end
+end)
 
 local NameLabel = Instance.new("TextLabel")
 NameLabel.BackgroundTransparency = 1
@@ -686,23 +694,7 @@ end
 ------------------------------------------------------------
 -- ============= 6. LOADING SEQUENCE =============
 ------------------------------------------------------------
-task.spawn(function()
-    local steps = {
-        {0.15, "Đang khởi tạo..."},
-        {0.35, "Đang tải cấu hình..."},
-        {0.60, "Đang kết nối server..."},
-        {0.85, "Đang chuẩn bị giao diện..."},
-        {1.00, "Hoàn tất!"},
-    }
-
-    local elapsed = 0
-    for _, step in ipairs(steps) do
-        local target, text = step[1], step[2]
-        PercentLabel.Text = text .. " " .. math.floor(target * 100) .. "%"
-        tween(BarFill, {Size = UDim2.new(target, 0, 1, 0)}, CONFIG.LoadingTime / #steps, Enum.EasingStyle.Quad)
-        task.wait(CONFIG.LoadingTime / #steps)
-    end
-
+local function finishLoading()
     -- ẩn màn hình loading
     tween(LoadingFrame, {BackgroundTransparency = 1}, 0.4)
     tween(LogoLabel, {TextTransparency = 1}, 0.3)
@@ -720,6 +712,46 @@ task.spawn(function()
 
     -- notify loading thành công, thanh thời gian 3s
     CreateNotify("Loading thành công", "Ryzen Config " .. CONFIG.Version .. " đã sẵn sàng!", 3)
+end
+
+task.spawn(function()
+    local steps = {
+        {0.15, "Đang khởi tạo..."},
+        {0.35, "Đang tải cấu hình..."},
+        {0.60, "Đang kết nối server..."},
+        {0.85, "Đang chuẩn bị giao diện..."},
+        {1.00, "Hoàn tất!"},
+    }
+
+    -- Bọc pcall để 1 lỗi nhỏ (vd tween, UI bị destroy) không làm loading treo mãi mãi
+    local ok, err = pcall(function()
+        for _, step in ipairs(steps) do
+            local target, text = step[1], step[2]
+            PercentLabel.Text = text .. " " .. math.floor(target * 100) .. "%"
+            tween(BarFill, {Size = UDim2.new(target, 0, 1, 0)}, CONFIG.LoadingTime / #steps, Enum.EasingStyle.Quad)
+            task.wait(CONFIG.LoadingTime / #steps)
+        end
+    end)
+
+    if not ok then
+        warn("[Ryzen Config] Loading sequence gặp lỗi, đang bỏ qua và mở UI: " .. tostring(err))
+        -- fallback: vẫn kéo bar về 100% để không đứng hình ở 0%
+        pcall(function()
+            BarFill.Size = UDim2.new(1, 0, 1, 0)
+            PercentLabel.Text = "Hoàn tất! 100%"
+        end)
+    end
+
+    finishLoading()
+end)
+
+-- Fail-safe cứng: nếu vì lý do gì đó sau LoadingTime + 2s mà LoadingFrame vẫn hiện,
+-- ép mở UI để không bao giờ bị kẹt màn hình loading vĩnh viễn.
+task.delay(CONFIG.LoadingTime + 2, function()
+    if LoadingFrame.Visible then
+        warn("[Ryzen Config] Loading quá thời gian dự kiến, ép mở UI (fail-safe).")
+        pcall(finishLoading)
+    end
 end)
 
 print("[Ryzen Config] UI Loaded - v" .. CONFIG.Version .. " by " .. CONFIG.Author)
