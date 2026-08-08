@@ -40,8 +40,15 @@ local CONFIG = {
 ------------------------------------------------------------
 -- ROOT GUI
 ------------------------------------------------------------
+local guidOk, guid = pcall(function()
+    return HttpService:GenerateGUID(false)
+end)
+if not guidOk then
+    guid = tostring(math.random(100000, 999999))
+end
+
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "RyzenConfig_" .. HttpService:GenerateGUID(false)
+ScreenGui.Name = "RyzenConfig_" .. guid
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -518,19 +525,39 @@ MarqueeText.TextXAlignment = Enum.TextXAlignment.Left
 MarqueeText.ZIndex = 12
 MarqueeText.Parent = Marquee
 
--- chạy chữ ngang liên tục
+-- chạy chữ ngang liên tục (an toàn: không block loading, tự phục hồi nếu lỗi)
 task.spawn(function()
+    -- đợi 1 frame để TextBounds được tính đúng
+    task.wait()
+
     while Marquee.Parent do
-        local textWidth = MarqueeText.TextBounds.X
-        MarqueeText.Position = UDim2.new(0, Marquee.AbsoluteSize.X, 0, 0)
-        local dist = textWidth + Marquee.AbsoluteSize.X
-        local speed = 90 -- px/giây
-        local dur = dist / speed
-        local tw = TweenService:Create(MarqueeText, TweenInfo.new(dur, Enum.EasingStyle.Linear), {
-            Position = UDim2.new(0, -textWidth, 0, 0)
-        })
-        tw:Play()
-        tw.Completed:Wait()
+        local ok = pcall(function()
+            local textWidth = math.max(MarqueeText.TextBounds.X, 50)
+            local containerWidth = math.max(Marquee.AbsoluteSize.X, 50)
+
+            MarqueeText.Position = UDim2.new(0, containerWidth, 0, 0)
+            local dist = textWidth + containerWidth
+            local speed = 90 -- px/giây
+            local dur = math.max(dist / speed, 0.5) -- tránh dur = 0
+
+            local tw = TweenService:Create(MarqueeText, TweenInfo.new(dur, Enum.EasingStyle.Linear), {
+                Position = UDim2.new(0, -textWidth, 0, 0)
+            })
+            tw:Play()
+
+            -- dùng timeout thay vì Wait() vô hạn, phòng trường hợp Completed không fire
+            local finished = false
+            tw.Completed:Once(function() finished = true end)
+            local waited = 0
+            while not finished and waited < dur + 2 do
+                task.wait(0.1)
+                waited += 0.1
+            end
+        end)
+
+        if not ok then
+            task.wait(1) -- nếu lỗi, nghỉ 1s rồi thử lại, không spam vòng lặp
+        end
     end
 end)
 
