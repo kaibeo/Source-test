@@ -1,21 +1,22 @@
 --[[
-    RYZEN CONFIG UI [Banana Kaitun] v3.0
+    RYZEN CONFIG UI [Banana Kaitun] v3.1 - HORIZONTAL BAR
     Made by Kaibeo | Server: discord.gg/fdyw76rTuD
     Đặt Script này là LocalScript bên trong StarterGui
 
-    Đây là bảng thông tin (info dashboard) cho Roblox:
-    - Avatar, Ping, FPS, Giờ, Ngày
+    Thanh info ngang, mỏng, gọn:
+    - Avatar, FPS, Ping, Giờ, Ngày, Playtime (thời gian chơi từ lúc vào server)
     - Ticker chữ chạy ngang
     - Loading screen animation
-    - Nút bật/tắt UI (mở/ẩn bảng chính)
+    - Nút bật/tắt UI (mở/ẩn thanh chính)
 ]]
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
+local Stats = game:GetService("Stats")
 
 local player = Players.LocalPlayer
+local joinTime = os.clock() -- mốc để tính playtime
 
 -- ===================== COLORS =====================
 local COL_BG0    = Color3.fromRGB(10, 10, 11)
@@ -36,7 +37,6 @@ screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
--- Helper: add corner
 local function corner(parent, radius)
     local c = Instance.new("UICorner")
     c.CornerRadius = UDim.new(0, radius or 8)
@@ -44,7 +44,6 @@ local function corner(parent, radius)
     return c
 end
 
--- Helper: add stroke
 local function stroke(parent, color, thickness)
     local s = Instance.new("UIStroke")
     s.Color = color or COL_LINE
@@ -71,7 +70,6 @@ loaderGradient.Color = ColorSequence.new({
 loaderGradient.Rotation = 90
 loaderGradient.Parent = loader
 
--- glowing ring behind logo
 local glowRing = Instance.new("Frame")
 glowRing.AnchorPoint = Vector2.new(0.5, 0.5)
 glowRing.Position = UDim2.new(0.5, 0, 0.4, 0)
@@ -115,7 +113,6 @@ brandSub.TextSize = 16
 brandSub.ZIndex = 101
 brandSub.Parent = loader
 
--- progress bar track
 local barTrack = Instance.new("Frame")
 barTrack.Size = UDim2.new(0, 340, 0, 6)
 barTrack.Position = UDim2.new(0.5, -170, 0.58, 0)
@@ -169,14 +166,13 @@ local verLabel = Instance.new("TextLabel")
 verLabel.BackgroundTransparency = 1
 verLabel.Size = UDim2.new(1, 0, 0, 18)
 verLabel.Position = UDim2.new(0, 0, 0.92, 0)
-verLabel.Text = "RYZEN CONFIG v3.0 — MADE BY KAIBEO"
+verLabel.Text = "RYZEN CONFIG v3.1 — MADE BY KAIBEO"
 verLabel.TextColor3 = COL_DIM
 verLabel.Font = Enum.Font.Gotham
 verLabel.TextSize = 11
 verLabel.ZIndex = 101
 verLabel.Parent = loader
 
--- "Hoàn tất" tick badge, ẩn sẵn, hiện khi loading xong
 local doneBadge = Instance.new("Frame")
 doneBadge.AnchorPoint = Vector2.new(0.5, 0.5)
 doneBadge.Position = UDim2.new(0.5, 0, 0.4, 0)
@@ -198,11 +194,14 @@ doneCheck.TextSize = 36
 doneCheck.ZIndex = 104
 doneCheck.Parent = doneBadge
 
--- ===================== MAIN FRAME =====================
+-- ===================== MAIN BAR (HORIZONTAL, WIDE & THIN) =====================
+local BAR_WIDTH = 860
+local BAR_HEIGHT = 64
+
 local main = Instance.new("Frame")
 main.Name = "Main"
-main.Size = UDim2.fromOffset(300, 360)
-main.Position = UDim2.new(0.5, -150, 0.5, -180)
+main.Size = UDim2.fromOffset(BAR_WIDTH, BAR_HEIGHT)
+main.Position = UDim2.new(0.5, -BAR_WIDTH/2, 0, 20)
 main.BackgroundColor3 = COL_BG1
 main.BorderSizePixel = 0
 main.Visible = false
@@ -210,8 +209,6 @@ main.ClipsDescendants = true
 main.Parent = screenGui
 corner(main, 14)
 stroke(main, COL_LINE, 1)
-
--- shadow effect (subtle, via ImageLabel with rounded 9-slice) — optional, skipped for simplicity
 
 -- Draggable
 do
@@ -234,274 +231,218 @@ do
     end)
 end
 
--- ===== Ticker (marquee) =====
-local tickerFrame = Instance.new("Frame")
-tickerFrame.Name = "Ticker"
-tickerFrame.Size = UDim2.new(1, 0, 0, 26)
-tickerFrame.BackgroundColor3 = Color3.fromRGB(15, 5, 7)
-tickerFrame.BorderSizePixel = 0
-tickerFrame.ClipsDescendants = true
-tickerFrame.Parent = main
-corner(tickerFrame, 14) -- bo nhẹ góc trên cùng theo main
+-- accent line trên cùng
+local topAccent = Instance.new("Frame")
+topAccent.Size = UDim2.new(1, 0, 0, 2)
+topAccent.BackgroundColor3 = COL_RED
+topAccent.BorderSizePixel = 0
+topAccent.Parent = main
 
-local tickerBottomLine = Instance.new("Frame")
-tickerBottomLine.Size = UDim2.new(1, 0, 0, 1)
-tickerBottomLine.Position = UDim2.new(0, 0, 1, -1)
-tickerBottomLine.BackgroundColor3 = COL_REDDIM
-tickerBottomLine.BorderSizePixel = 0
-tickerBottomLine.Parent = tickerFrame
+local topAccentGrad = Instance.new("UIGradient")
+topAccentGrad.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, COL_REDDIM),
+    ColorSequenceKeypoint.new(0.5, COL_RED),
+    ColorSequenceKeypoint.new(1, COL_REDDIM),
+})
+topAccentGrad.Parent = topAccent
 
-local tickerText = Instance.new("TextLabel")
-tickerText.BackgroundTransparency = 1
-tickerText.Size = UDim2.new(0, 700, 1, 0)
-tickerText.Position = UDim2.new(0, 300, 0, 0)
-tickerText.Text = "🎮 Config make by Kaibeo   •   Server: discord.gg/fdyw76rTuD   •   RYZEN CONFIG v3.0 [Banana Kaitun]   •   "
-tickerText.TextColor3 = COL_DIM
-tickerText.Font = Enum.Font.Gotham
-tickerText.TextSize = 12
-tickerText.TextXAlignment = Enum.TextXAlignment.Left
-tickerText.Parent = tickerFrame
+-- content row layout ngang
+local content = Instance.new("Frame")
+content.Size = UDim2.new(1, -16, 1, -6)
+content.Position = UDim2.new(0, 8, 0, 4)
+content.BackgroundTransparency = 1
+content.Parent = main
 
--- ===== Topbar =====
-local topbar = Instance.new("Frame")
-topbar.Name = "Topbar"
-topbar.Size = UDim2.new(1, 0, 0, 58)
-topbar.Position = UDim2.new(0, 0, 0, 26)
-topbar.BackgroundColor3 = COL_BG1
-topbar.BorderSizePixel = 0
-topbar.Parent = main
+local rowLayout = Instance.new("UIListLayout")
+rowLayout.FillDirection = Enum.FillDirection.Horizontal
+rowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+rowLayout.Padding = UDim.new(0, 8)
+rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
+rowLayout.Parent = content
 
-local topLine = Instance.new("Frame")
-topLine.Size = UDim2.new(1, 0, 0, 1)
-topLine.Position = UDim2.new(0, 0, 1, -1)
-topLine.BackgroundColor3 = COL_LINE
-topLine.BorderSizePixel = 0
-topLine.Parent = topbar
+-- ===== Avatar + name block =====
+local profileBlock = Instance.new("Frame")
+profileBlock.Size = UDim2.fromOffset(150, 52)
+profileBlock.BackgroundTransparency = 1
+profileBlock.LayoutOrder = 1
+profileBlock.Parent = content
 
 local avatarImg = Instance.new("ImageLabel")
-avatarImg.Name = "Avatar"
-avatarImg.Size = UDim2.fromOffset(36, 36)
-avatarImg.Position = UDim2.new(0, 12, 0.5, -18)
+avatarImg.Size = UDim2.fromOffset(40, 40)
+avatarImg.Position = UDim2.new(0, 0, 0.5, -20)
 avatarImg.BackgroundColor3 = COL_BG2
 local ok, thumb = pcall(function()
     return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
 end)
 avatarImg.Image = ok and thumb or ""
-avatarImg.Parent = topbar
-corner(avatarImg, 18)
+avatarImg.Parent = profileBlock
+corner(avatarImg, 20)
 stroke(avatarImg, COL_REDDIM, 2)
 
 local nameLbl = Instance.new("TextLabel")
 nameLbl.BackgroundTransparency = 1
-nameLbl.Size = UDim2.new(0, 130, 0, 16)
-nameLbl.Position = UDim2.new(0, 56, 0, 11)
+nameLbl.Size = UDim2.new(0, 100, 0, 16)
+nameLbl.Position = UDim2.new(0, 48, 0, 8)
 nameLbl.TextXAlignment = Enum.TextXAlignment.Left
 nameLbl.Text = player.DisplayName
 nameLbl.TextColor3 = COL_TXT
 nameLbl.Font = Enum.Font.GothamBold
 nameLbl.TextSize = 13
 nameLbl.TextTruncate = Enum.TextTruncate.AtEnd
-nameLbl.Parent = topbar
+nameLbl.Parent = profileBlock
 
 local userLbl = Instance.new("TextLabel")
 userLbl.BackgroundTransparency = 1
-userLbl.Size = UDim2.new(0, 130, 0, 14)
-userLbl.Position = UDim2.new(0, 56, 0, 29)
+userLbl.Size = UDim2.new(0, 100, 0, 14)
+userLbl.Position = UDim2.new(0, 48, 0, 26)
 userLbl.TextXAlignment = Enum.TextXAlignment.Left
 userLbl.Text = "@" .. player.Name
 userLbl.TextColor3 = COL_DIM
 userLbl.Font = Enum.Font.Gotham
 userLbl.TextSize = 11
 userLbl.TextTruncate = Enum.TextTruncate.AtEnd
-userLbl.Parent = topbar
+userLbl.Parent = profileBlock
 
--- close (ẩn) button
-local closeBtn = Instance.new("TextButton")
-closeBtn.Text = "✕"
-closeBtn.Font = Enum.Font.GothamBold
-closeBtn.TextSize = 16
-closeBtn.TextColor3 = COL_DIM
-closeBtn.Size = UDim2.fromOffset(26, 26)
-closeBtn.Position = UDim2.new(1, -38, 0, 19)
-closeBtn.BackgroundColor3 = COL_BG2
-closeBtn.AutoButtonColor = false
-closeBtn.Parent = topbar
-corner(closeBtn, 8)
-local closeStroke = stroke(closeBtn, COL_LINE, 1)
+-- divider
+local function makeDivider(order)
+    local d = Instance.new("Frame")
+    d.Size = UDim2.new(0, 1, 1, -12)
+    d.BackgroundColor3 = COL_LINE
+    d.BorderSizePixel = 0
+    d.LayoutOrder = order
+    d.Parent = content
+    return d
+end
+makeDivider(2)
 
-closeBtn.MouseEnter:Connect(function()
-    TweenService:Create(closeBtn, TweenInfo.new(0.15), {TextColor3 = COL_RED}):Play()
-    TweenService:Create(closeStroke, TweenInfo.new(0.15), {Color = COL_REDDIM}):Play()
-end)
-closeBtn.MouseLeave:Connect(function()
-    TweenService:Create(closeBtn, TweenInfo.new(0.15), {TextColor3 = COL_DIM}):Play()
-    TweenService:Create(closeStroke, TweenInfo.new(0.15), {Color = COL_LINE}):Play()
-end)
-
--- ===== Stats row (FPS / Ping / Time / Date) =====
-local statsRow = Instance.new("Frame")
-statsRow.Name = "StatsRow"
-statsRow.Size = UDim2.new(1, -24, 0, 76)
-statsRow.Position = UDim2.new(0, 12, 0, 94)
-statsRow.BackgroundTransparency = 1
-statsRow.Parent = main
-
-local statsLayout = Instance.new("UIGridLayout")
-statsLayout.CellPadding = UDim2.fromOffset(6, 6)
-statsLayout.CellSize = UDim2.new(0.5, -3, 0, 35)
-statsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-statsLayout.Parent = statsRow
-
-local function makeStatCard(order, icon, label)
-    local card = Instance.new("Frame")
-    card.LayoutOrder = order
-    card.BackgroundColor3 = COL_BG2
-    card.Parent = statsRow
-    corner(card, 10)
-    stroke(card, COL_LINE, 1)
+-- ===== Compact stat pill =====
+local function makeStatPill(order, icon, label)
+    local pill = Instance.new("Frame")
+    pill.Size = UDim2.fromOffset(96, 52)
+    pill.BackgroundColor3 = COL_BG2
+    pill.LayoutOrder = order
+    pill.Parent = content
+    corner(pill, 10)
+    stroke(pill, COL_LINE, 1)
 
     local iconLbl = Instance.new("TextLabel")
     iconLbl.BackgroundTransparency = 1
-    iconLbl.Size = UDim2.fromOffset(24, 24)
-    iconLbl.Position = UDim2.new(0, 6, 0.5, -12)
+    iconLbl.Size = UDim2.fromOffset(20, 20)
+    iconLbl.Position = UDim2.new(0, 8, 0, 8)
     iconLbl.Text = icon
     iconLbl.TextColor3 = COL_RED
     iconLbl.Font = Enum.Font.GothamBold
     iconLbl.TextSize = 13
-    iconLbl.Parent = card
+    iconLbl.Parent = pill
 
     local capLbl = Instance.new("TextLabel")
     capLbl.BackgroundTransparency = 1
-    capLbl.Size = UDim2.new(1, -36, 0, 12)
-    capLbl.Position = UDim2.new(0, 32, 0, 4)
+    capLbl.Size = UDim2.new(1, -32, 0, 12)
+    capLbl.Position = UDim2.new(0, 30, 0, 8)
     capLbl.TextXAlignment = Enum.TextXAlignment.Left
     capLbl.Text = label
     capLbl.TextColor3 = COL_DIM
     capLbl.Font = Enum.Font.Gotham
     capLbl.TextSize = 9
-    capLbl.Parent = card
+    capLbl.Parent = pill
 
     local valLbl = Instance.new("TextLabel")
     valLbl.BackgroundTransparency = 1
-    valLbl.Size = UDim2.new(1, -36, 0, 16)
-    valLbl.Position = UDim2.new(0, 32, 0, 16)
+    valLbl.Size = UDim2.new(1, -16, 0, 18)
+    valLbl.Position = UDim2.new(0, 8, 0, 26)
     valLbl.TextXAlignment = Enum.TextXAlignment.Left
     valLbl.Text = "--"
     valLbl.TextColor3 = COL_TXT
     valLbl.Font = Enum.Font.GothamBold
-    valLbl.TextSize = 12
-    valLbl.Parent = card
+    valLbl.TextSize = 13
+    valLbl.Parent = pill
 
     return valLbl
 end
 
-local fpsVal  = makeStatCard(1, "⚡", "FPS")
-local pingVal = makeStatCard(2, "📶", "PING")
-local clockTime = makeStatCard(3, "🕒", "GIỜ")
-local clockDate = makeStatCard(4, "📅", "NGÀY")
+local fpsVal      = makeStatPill(3, "⚡", "FPS")
+local pingVal     = makeStatPill(4, "📶", "PING")
+local clockTime   = makeStatPill(5, "🕒", "GIỜ")
+local clockDate   = makeStatPill(6, "📅", "NGÀY")
+local playtimeVal = makeStatPill(7, "⏱", "PLAYTIME")
 
--- ===== Section label =====
-local sectionLbl = Instance.new("TextLabel")
-sectionLbl.BackgroundTransparency = 1
-sectionLbl.Size = UDim2.new(1, -24, 0, 18)
-sectionLbl.Position = UDim2.new(0, 12, 0, 176)
-sectionLbl.TextXAlignment = Enum.TextXAlignment.Left
-sectionLbl.Text = "THÔNG TIN MẠNG"
-sectionLbl.TextColor3 = COL_DIM
-sectionLbl.Font = Enum.Font.GothamBold
-sectionLbl.TextSize = 10
-sectionLbl.Parent = main
+makeDivider(8)
 
--- ===== Network status card =====
-local netCard = Instance.new("Frame")
-netCard.Size = UDim2.new(1, -24, 0, 50)
-netCard.Position = UDim2.new(0, 12, 0, 198)
-netCard.BackgroundColor3 = COL_BG2
-netCard.Parent = main
-corner(netCard, 10)
-stroke(netCard, COL_LINE, 1)
+-- ===== Network status (compact) =====
+local netBlock = Instance.new("Frame")
+netBlock.Size = UDim2.fromOffset(140, 52)
+netBlock.BackgroundTransparency = 1
+netBlock.LayoutOrder = 9
+netBlock.Parent = content
 
 local netDot = Instance.new("Frame")
-netDot.Size = UDim2.fromOffset(9, 9)
-netDot.Position = UDim2.new(0, 14, 0.5, -4)
+netDot.Size = UDim2.fromOffset(8, 8)
+netDot.Position = UDim2.new(0, 2, 0, 10)
 netDot.BackgroundColor3 = COL_GREEN
-netDot.Parent = netCard
-corner(netDot, 5)
+netDot.Parent = netBlock
+corner(netDot, 4)
 
 local netTitle = Instance.new("TextLabel")
 netTitle.BackgroundTransparency = 1
-netTitle.Size = UDim2.new(1, -60, 0, 15)
-netTitle.Position = UDim2.new(0, 32, 0, 9)
+netTitle.Size = UDim2.new(1, -18, 0, 14)
+netTitle.Position = UDim2.new(0, 18, 0, 4)
 netTitle.TextXAlignment = Enum.TextXAlignment.Left
-netTitle.Text = "Trạng thái kết nối"
+netTitle.Text = "Kết nối"
 netTitle.TextColor3 = COL_TXT
 netTitle.Font = Enum.Font.GothamBold
-netTitle.TextSize = 12
-netTitle.Parent = netCard
+netTitle.TextSize = 11
+netTitle.Parent = netBlock
 
 local netVal = Instance.new("TextLabel")
 netVal.BackgroundTransparency = 1
-netVal.Size = UDim2.new(1, -60, 0, 13)
-netVal.Position = UDim2.new(0, 32, 0, 26)
+netVal.Size = UDim2.new(1, -18, 0, 13)
+netVal.Position = UDim2.new(0, 18, 0, 20)
 netVal.TextXAlignment = Enum.TextXAlignment.Left
 netVal.Text = "Đang kiểm tra..."
 netVal.TextColor3 = COL_DIM
 netVal.Font = Enum.Font.Gotham
 netVal.TextSize = 10
-netVal.Parent = netCard
+netVal.Parent = netBlock
 
--- ===== Footer =====
-local footer = Instance.new("Frame")
-footer.Size = UDim2.new(1, 0, 0, 30)
-footer.Position = UDim2.new(0, 0, 1, -30)
-footer.BackgroundColor3 = COL_BG1
-footer.BorderSizePixel = 0
-footer.Parent = main
+-- ===== Ticker nhỏ bên dưới avatar block, chạy full width mỏng dưới cùng bar (optional strip) =====
+local tickerFrame = Instance.new("Frame")
+tickerFrame.Size = UDim2.new(1, 0, 0, 16)
+tickerFrame.Position = UDim2.new(0, 0, 1, -16)
+tickerFrame.BackgroundColor3 = Color3.fromRGB(15, 5, 7)
+tickerFrame.BorderSizePixel = 0
+tickerFrame.ClipsDescendants = true
+tickerFrame.ZIndex = 2
+tickerFrame.Parent = main
 
-local footerLine = Instance.new("Frame")
-footerLine.Size = UDim2.new(1, 0, 0, 1)
-footerLine.BackgroundColor3 = COL_LINE
-footerLine.BorderSizePixel = 0
-footerLine.Parent = footer
+local tickerText = Instance.new("TextLabel")
+tickerText.BackgroundTransparency = 1
+tickerText.Size = UDim2.new(0, 900, 1, 0)
+tickerText.Position = UDim2.new(0, BAR_WIDTH, 0, 0)
+tickerText.Text = "🎮 Config make by Kaibeo   •   Server: discord.gg/fdyw76rTuD   •   RYZEN CONFIG v3.1 [Banana Kaitun]   •   "
+tickerText.TextColor3 = COL_DIM
+tickerText.Font = Enum.Font.Gotham
+tickerText.TextSize = 10
+tickerText.TextXAlignment = Enum.TextXAlignment.Left
+tickerText.ZIndex = 2
+tickerText.Parent = tickerFrame
 
-local footerLeft = Instance.new("TextLabel")
-footerLeft.BackgroundTransparency = 1
-footerLeft.Size = UDim2.new(0.5, -12, 1, 0)
-footerLeft.Position = UDim2.new(0, 12, 0, 0)
-footerLeft.TextXAlignment = Enum.TextXAlignment.Left
-footerLeft.Text = "RYZEN CONFIG v3.0"
-footerLeft.TextColor3 = COL_DIM
-footerLeft.Font = Enum.Font.Gotham
-footerLeft.TextSize = 10
-footerLeft.Parent = footer
+-- adjust content height to leave room for ticker strip
+content.Size = UDim2.new(1, -16, 1, -22)
 
-local footerRight = Instance.new("TextLabel")
-footerRight.BackgroundTransparency = 1
-footerRight.Size = UDim2.new(0.5, -12, 1, 0)
-footerRight.Position = UDim2.new(0.5, 0, 0, 0)
-footerRight.TextXAlignment = Enum.TextXAlignment.Right
-footerRight.Text = "Made by Kaibeo"
-footerRight.TextColor3 = COL_RED
-footerRight.Font = Enum.Font.GothamBold
-footerRight.TextSize = 10
-footerRight.Parent = footer
-
--- ===================== TOGGLE BUTTON (bật/tắt UI) =====================
--- Nút nổi để ẩn/hiện toàn bộ bảng main, luôn hiển thị góc màn hình
+-- ===================== TOGGLE BUTTON =====================
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Name = "ToggleButton"
 toggleBtn.Text = ""
-toggleBtn.Size = UDim2.fromOffset(44, 44)
+toggleBtn.Size = UDim2.fromOffset(40, 40)
 toggleBtn.Position = UDim2.new(0, 20, 0, 20)
 toggleBtn.BackgroundColor3 = COL_BG1
 toggleBtn.AutoButtonColor = false
 toggleBtn.ZIndex = 50
-toggleBtn.Visible = false -- hiện sau khi loading xong
+toggleBtn.Visible = false
 toggleBtn.Parent = screenGui
 corner(toggleBtn, 10)
 local toggleStroke = stroke(toggleBtn, COL_RED, 1.5)
 
--- gradient nền nhẹ cho hiệu ứng cyber
 local toggleGradient = Instance.new("UIGradient")
 toggleGradient.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(0, Color3.fromRGB(24, 10, 12)),
@@ -510,73 +451,25 @@ toggleGradient.Color = ColorSequence.new({
 toggleGradient.Rotation = 90
 toggleGradient.Parent = toggleBtn
 
--- góc cắt kiểu tech (2 vạch chéo nhỏ ở góc trên-trái & dưới-phải)
-local cornerTick1 = Instance.new("Frame")
-cornerTick1.Size = UDim2.fromOffset(10, 2)
-cornerTick1.Position = UDim2.fromOffset(4, 4)
-cornerTick1.BackgroundColor3 = COL_RED
-cornerTick1.BorderSizePixel = 0
-cornerTick1.ZIndex = 51
-cornerTick1.Parent = toggleBtn
-
-local cornerTick2 = Instance.new("Frame")
-cornerTick2.Size = UDim2.fromOffset(2, 10)
-cornerTick2.Position = UDim2.fromOffset(4, 4)
-cornerTick2.BackgroundColor3 = COL_RED
-cornerTick2.BorderSizePixel = 0
-cornerTick2.ZIndex = 51
-cornerTick2.Parent = toggleBtn
-
-local cornerTick3 = Instance.new("Frame")
-cornerTick3.Size = UDim2.fromOffset(10, 2)
-cornerTick3.Position = UDim2.new(1, -14, 1, -6)
-cornerTick3.BackgroundColor3 = COL_RED
-cornerTick3.BorderSizePixel = 0
-cornerTick3.ZIndex = 51
-cornerTick3.Parent = toggleBtn
-
-local cornerTick4 = Instance.new("Frame")
-cornerTick4.Size = UDim2.fromOffset(2, 10)
-cornerTick4.Position = UDim2.new(1, -6, 1, -14)
-cornerTick4.BackgroundColor3 = COL_RED
-cornerTick4.BorderSizePixel = 0
-cornerTick4.ZIndex = 51
-cornerTick4.Parent = toggleBtn
-
--- icon trung tâm dạng "power / circuit" bằng ký tự tech thay vì chữ R
 local toggleIcon = Instance.new("TextLabel")
 toggleIcon.BackgroundTransparency = 1
 toggleIcon.Size = UDim2.fromScale(1, 1)
 toggleIcon.Text = "⌁"
 toggleIcon.TextColor3 = COL_RED
 toggleIcon.Font = Enum.Font.GothamBlack
-toggleIcon.TextSize = 22
+toggleIcon.TextSize = 20
 toggleIcon.ZIndex = 51
 toggleIcon.Parent = toggleBtn
 
--- glow mờ phía sau nút, sáng lên khi hover
-local toggleGlow = Instance.new("Frame")
-toggleGlow.AnchorPoint = Vector2.new(0.5, 0.5)
-toggleGlow.Position = UDim2.new(0.5, 0, 0.5, 0)
-toggleGlow.Size = UDim2.new(1, 12, 1, 12)
-toggleGlow.BackgroundColor3 = COL_RED
-toggleGlow.BackgroundTransparency = 1
-toggleGlow.ZIndex = 49
-toggleGlow.Parent = toggleBtn
-corner(toggleGlow, 12)
-
 toggleBtn.MouseEnter:Connect(function()
     TweenService:Create(toggleStroke, TweenInfo.new(0.15), {Thickness = 2}):Play()
-    TweenService:Create(toggleGlow, TweenInfo.new(0.15), {BackgroundTransparency = 0.85}):Play()
-    TweenService:Create(toggleIcon, TweenInfo.new(0.15), {TextSize = 24}):Play()
+    TweenService:Create(toggleIcon, TweenInfo.new(0.15), {TextSize = 22}):Play()
 end)
 toggleBtn.MouseLeave:Connect(function()
     TweenService:Create(toggleStroke, TweenInfo.new(0.15), {Thickness = 1.5}):Play()
-    TweenService:Create(toggleGlow, TweenInfo.new(0.15), {BackgroundTransparency = 1}):Play()
-    TweenService:Create(toggleIcon, TweenInfo.new(0.15), {TextSize = 22}):Play()
+    TweenService:Create(toggleIcon, TweenInfo.new(0.15), {TextSize = 20}):Play()
 end)
 
--- kéo thả cho nút toggle
 do
     local dragging, dragStart, startPos
     toggleBtn.InputBegan:Connect(function(input)
@@ -597,181 +490,134 @@ do
     end)
 end
 
-local uiVisible = true
-local function setUIVisible(v)
-    uiVisible = v
-    if v then
-        main.Visible = true
-        main.Size = UDim2.fromOffset(300, 0)
-        for _, obj in ipairs(main:GetDescendants()) do
-            if obj:IsA("TextLabel") then obj.TextTransparency = 1 end
-        end
-        TweenService:Create(main, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {Size = UDim2.fromOffset(300, 360)}):Play()
-        task.wait(0.12)
-        for _, obj in ipairs(main:GetDescendants()) do
-            if obj:IsA("TextLabel") then
-                TweenService:Create(obj, TweenInfo.new(0.2), {TextTransparency = 0}):Play()
-            end
-        end
-        toggleStroke.Color = COL_RED
-        toggleIcon.TextColor3 = COL_RED
-    else
-        local tw = TweenService:Create(main, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {Size = UDim2.fromOffset(300, 0)})
-        tw:Play()
-        tw.Completed:Wait()
-        main.Visible = false
-        toggleStroke.Color = COL_LINE
-        toggleIcon.TextColor3 = COL_DIM
-    end
+local uiOpen = true
+local function setOpen(open)
+    uiOpen = open
+    main.Visible = open
 end
 
 toggleBtn.MouseButton1Click:Connect(function()
-    setUIVisible(not uiVisible)
-end)
-closeBtn.MouseButton1Click:Connect(function()
-    setUIVisible(false)
+    setOpen(not uiOpen)
 end)
 
--- Phím tắt: RightControl để bật/tắt UI (tuỳ chọn, có thể xoá đoạn này nếu không cần)
-UserInputService.InputBegan:Connect(function(input, processed)
-    if processed then return end
-    if input.KeyCode == Enum.KeyCode.RightControl then
-        setUIVisible(not uiVisible)
-    end
-end)
-
--- ===================== LOADING LOGIC =====================
-local steps = {
-    {12, "Đang khởi tạo module..."},
-    {30, "Đang kết nối máy chủ..."},
-    {50, "Đang tải cấu hình Ryzen..."},
-    {70, "Đang xác thực thiết bị..."},
-    {88, "Đang tối ưu hiệu năng..."},
-    {100, "Hoàn tất — Khởi chạy!"},
+-- ===================== LOADING SEQUENCE =====================
+local loadSteps = {
+    {0.15, "Đang khởi tạo module..."},
+    {0.35, "Đang tải giao diện..."},
+    {0.60, "Đang kết nối máy chủ..."},
+    {0.85, "Đang đồng bộ dữ liệu..."},
+    {1.00, "Hoàn tất!"},
 }
 
 task.spawn(function()
-    for _, step in ipairs(steps) do
+    for _, step in ipairs(loadSteps) do
         local pct, msg = step[1], step[2]
         statusMsg.Text = msg
-        statusPct.Text = pct .. "%"
-        TweenService:Create(barFill, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
-            Size = UDim2.new(pct / 100, 0, 1, 0)
-        }):Play()
-        task.wait(0.35 + math.random() * 0.25)
+        TweenService:Create(barFill, TweenInfo.new(0.35, Enum.EasingStyle.Quad), {Size = UDim2.new(pct, 0, 1, 0)}):Play()
+        local elapsed = 0
+        while elapsed < 0.35 do
+            local dt = task.wait()
+            elapsed += dt
+            statusPct.Text = math.floor((tonumber(statusPct.Text:gsub("%%","")) or 0) + (pct*100 - (tonumber(statusPct.Text:gsub("%%","")) or 0)) * 0.3) .. "%"
+        end
+        statusPct.Text = math.floor(pct * 100) .. "%"
+        task.wait(0.15)
     end
 
-    -- hiệu ứng "hoàn tất" — check mark to lên rồi mờ dần trước khi chuyển màn hình chính
-    statusPct.TextColor3 = COL_GREEN
-    barFill.BackgroundColor3 = COL_GREEN
-
-    TweenService:Create(doneBadge, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.fromOffset(80, 80),
-        BackgroundTransparency = 0,
-    }):Play()
+    -- done badge pop
+    TweenService:Create(doneBadge, TweenInfo.new(0.3, Enum.EasingStyle.Back), {Size = UDim2.fromOffset(80, 80), BackgroundTransparency = 0}):Play()
     TweenService:Create(doneCheck, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
-
     task.wait(0.6)
 
-    local fadeOut = TweenService:Create(loader, TweenInfo.new(0.5), {BackgroundTransparency = 1})
-    for _, obj in ipairs(loader:GetDescendants()) do
-        if obj:IsA("TextLabel") then
-            TweenService:Create(obj, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
-        elseif obj:IsA("Frame") then
-            TweenService:Create(obj, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
-        end
+    -- fade out loader
+    local fadeTargets = {brandMark, brandTitle, brandSub, statusMsg, statusPct, verLabel, glowRing}
+    for _, obj in ipairs(fadeTargets) do
+        TweenService:Create(obj, TweenInfo.new(0.3), {TextTransparency = 1, BackgroundTransparency = 1}):Play()
     end
-    fadeOut:Play()
+    TweenService:Create(doneBadge, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(doneCheck, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+    TweenService:Create(barTrack, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(barFill, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+
+    task.wait(0.35)
+    TweenService:Create(loader, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
+    task.wait(0.4)
+    loader.Visible = false
 
     main.Visible = true
-    main.Size = UDim2.fromOffset(300, 0)
-    main.BackgroundTransparency = 1
-    for _, obj in ipairs(main:GetDescendants()) do
-        if obj:IsA("TextLabel") then obj.TextTransparency = 1 end
-    end
+    main.Size = UDim2.fromOffset(BAR_WIDTH, 0)
+    main.Position = UDim2.new(0.5, -BAR_WIDTH/2, 0, 20)
+    TweenService:Create(main, TweenInfo.new(0.35, Enum.EasingStyle.Back), {Size = UDim2.fromOffset(BAR_WIDTH, BAR_HEIGHT)}):Play()
 
-    TweenService:Create(main, TweenInfo.new(0.45, Enum.EasingStyle.Quad), {
-        Size = UDim2.fromOffset(300, 360),
-        BackgroundTransparency = 0
-    }):Play()
-
-    task.wait(0.15)
-    for _, obj in ipairs(main:GetDescendants()) do
-        if obj:IsA("TextLabel") then
-            TweenService:Create(obj, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
-        end
-    end
-
-    fadeOut.Completed:Wait()
-    loader:Destroy()
-
-    -- hiện nút toggle sau khi loading xong
     toggleBtn.Visible = true
-    toggleBtn.Size = UDim2.fromOffset(0, 0)
-    TweenService:Create(toggleBtn, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.fromOffset(44, 44)
-    }):Play()
 end)
 
--- ===================== CLOCK LOOP =====================
+-- ===================== LIVE UPDATES =====================
+-- FPS
+local frameCount, fpsTimer = 0, 0
+RunService.RenderStepped:Connect(function(dt)
+    frameCount += 1
+    fpsTimer += dt
+    if fpsTimer >= 0.5 then
+        local fps = math.floor(frameCount / fpsTimer)
+        fpsVal.Text = tostring(fps)
+        fpsVal.TextColor3 = fps >= 50 and COL_GREEN or (fps >= 30 and COL_YELLOW or COL_RED)
+        frameCount, fpsTimer = 0, 0
+    end
+end)
+
+-- PING + Clock + Date + Playtime
 task.spawn(function()
     while true do
+        -- Ping
+        local ok2, pingMs = pcall(function()
+            return Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
+        end)
+        if ok2 and pingMs then
+            local ping = math.floor(pingMs)
+            pingVal.Text = ping .. "ms"
+            pingVal.TextColor3 = ping <= 80 and COL_GREEN or (ping <= 150 and COL_YELLOW or COL_RED)
+        end
+
+        -- Clock (giờ hệ thống máy)
         local t = os.date("*t")
         clockTime.Text = string.format("%02d:%02d:%02d", t.hour, t.min, t.sec)
         clockDate.Text = string.format("%02d/%02d/%04d", t.day, t.month, t.year)
+
+        -- Playtime (thời gian chơi từ lúc vào server)
+        local elapsedSec = math.floor(os.clock() - joinTime)
+        local h = math.floor(elapsedSec / 3600)
+        local m = math.floor((elapsedSec % 3600) / 60)
+        local s = elapsedSec % 60
+        if h > 0 then
+            playtimeVal.Text = string.format("%dh%02dm", h, m)
+        else
+            playtimeVal.Text = string.format("%02dm%02ds", m, s)
+        end
+
+        -- Network status
+        local connected = game:IsLoaded()
+        if connected then
+            netDot.BackgroundColor3 = COL_GREEN
+            netVal.Text = "Ổn định"
+            netVal.TextColor3 = COL_DIM
+        else
+            netDot.BackgroundColor3 = COL_YELLOW
+            netVal.Text = "Đang tải..."
+            netVal.TextColor3 = COL_YELLOW
+        end
+
         task.wait(1)
     end
 end)
 
--- ===================== STATS LOOP (FPS / Ping / Network) =====================
-task.spawn(function()
-    local frameCount = 0
-    local lastCheck = os.clock()
-    RunService.RenderStepped:Connect(function()
-        frameCount += 1
-    end)
-
-    while true do
-        task.wait(1)
-        local now = os.clock()
-        local dt = now - lastCheck
-        local fps = math.floor(frameCount / dt)
-        frameCount = 0
-        lastCheck = now
-
-        fpsVal.Text = tostring(fps)
-        fpsVal.TextColor3 = fps >= 50 and COL_GREEN or (fps >= 30 and COL_YELLOW or COL_RED)
-
-        local ping = 0
-        local success = pcall(function()
-            local stats = game:GetService("Stats")
-            local network = stats.Network
-            ping = math.floor(network.ServerStatsItem["Data Ping"]:GetValue())
-        end)
-        if not success or ping <= 0 then ping = 0 end
-
-        pingVal.Text = ping .. "ms"
-        pingVal.TextColor3 = ping <= 60 and COL_GREEN or (ping <= 120 and COL_YELLOW or COL_RED)
-
-        local isGood = ping > 0 and ping <= 100
-        netVal.Text = isGood and "Ổn định" or (ping == 0 and "Đang đo..." or "Kém")
-        netVal.TextColor3 = isGood and COL_GREEN or COL_RED
-        netDot.BackgroundColor3 = isGood and COL_GREEN or COL_RED
-    end
-end)
-
--- ===================== TICKER MARQUEE LOOP =====================
+-- Ticker scroll loop
 task.spawn(function()
     while true do
-        local frameWidth = tickerFrame.AbsoluteSize.X
-        tickerText.Position = UDim2.new(0, frameWidth, 0, 0)
-        local tween = TweenService:Create(
-            tickerText,
-            TweenInfo.new(14, Enum.EasingStyle.Linear),
-            {Position = UDim2.new(0, -tickerText.AbsoluteSize.X, 0, 0)}
-        )
+        local textWidth = tickerText.AbsoluteSize.X
+        tickerText.Position = UDim2.new(0, BAR_WIDTH, 0, 0)
+        local tween = TweenService:Create(tickerText, TweenInfo.new(14, Enum.EasingStyle.Linear), {Position = UDim2.new(0, -textWidth, 0, 0)})
         tween:Play()
         tween.Completed:Wait()
-        task.wait(0.5)
     end
 end)
