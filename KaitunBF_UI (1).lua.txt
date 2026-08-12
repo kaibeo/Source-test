@@ -1,0 +1,606 @@
+--[[
+	Kaitun BF - Player Info & Item Tracker UI
+	Compact, clean UI for Blox Fruits-style info display
+	Place this as a LocalScript inside StarterPlayerScripts (or StarterGui)
+]]
+
+local Players = game:GetService("Players")
+local Players_LocalPlayer = Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+
+-- ================= CONFIG =================
+-- Edit this table to change the items you're tracking.
+-- status: true = owned (green), false = missing (red)
+local ITEM_LIST = {
+	{name = "Dragon Trident", status = true},
+	{name = "Dark Coat", status = false},
+	{name = "Soul Guitar", status = false},
+	{name = "Yeti Coat", status = true},
+	{name = "Dough Fruit", status = false},
+	{name = "Kilo Fruit", status = true},
+	{name = "Buddy Sword", status = false},
+	{name = "Cursed Dual Katana", status = false},
+}
+
+-- Player stats (wire these up to real values from your game/leaderstats)
+local PLAYER_DATA = {
+	displayName = Players_LocalPlayer.DisplayName,
+	level = 2450,
+	world = "World 3 - Third Sea",
+	timeGame = "182h 40m",
+	beli = "12.4M",
+	fragments = "3,200",
+}
+
+-- ================= COLORS =================
+local COL_BG        = Color3.fromRGB(24, 24, 28)
+local COL_PANEL     = Color3.fromRGB(32, 32, 38)
+local COL_PANEL_ALT = Color3.fromRGB(38, 38, 45)
+local COL_ACCENT    = Color3.fromRGB(90, 160, 255)
+local COL_TEXT      = Color3.fromRGB(235, 235, 240)
+local COL_SUBTEXT   = Color3.fromRGB(160, 160, 170)
+local COL_GREEN     = Color3.fromRGB(76, 209, 130)
+local COL_RED       = Color3.fromRGB(235, 87, 87)
+local COL_STROKE    = Color3.fromRGB(55, 55, 62)
+
+-- ================= HELPERS =================
+local function corner(inst, radius)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, radius or 8)
+	c.Parent = inst
+	return c
+end
+
+local function stroke(inst, color, thickness)
+	local s = Instance.new("UIStroke")
+	s.Color = color or COL_STROKE
+	s.Thickness = thickness or 1
+	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	s.Parent = inst
+	return s
+end
+
+local function pad(inst, l, t, r, b)
+	local p = Instance.new("UIPadding")
+	p.PaddingLeft = UDim.new(0, l or 8)
+	p.PaddingTop = UDim.new(0, t or 8)
+	p.PaddingRight = UDim.new(0, r or 8)
+	p.PaddingBottom = UDim.new(0, b or 8)
+	p.Parent = inst
+	return p
+end
+
+local function newLabel(props)
+	local lbl = Instance.new("TextLabel")
+	lbl.BackgroundTransparency = 1
+	lbl.Font = Enum.Font.GothamMedium
+	lbl.TextColor3 = COL_TEXT
+	lbl.TextXAlignment = Enum.TextXAlignment.Left
+	lbl.TextYAlignment = Enum.TextYAlignment.Center
+	for k, v in pairs(props) do
+		lbl[k] = v
+	end
+	return lbl
+end
+
+-- ================= ROOT GUI =================
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "KaitunBF_UI"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.DisplayOrder = 10
+screenGui.Parent = Players_LocalPlayer:WaitForChild("PlayerGui")
+
+-- Main container (small + compact)
+local main = Instance.new("Frame")
+main.Name = "Main"
+main.Size = UDim2.fromOffset(300, 460)
+main.Position = UDim2.fromOffset(20, 20)
+main.BackgroundColor3 = COL_BG
+main.BorderSizePixel = 0
+main.Active = true
+main.Parent = screenGui
+corner(main, 14)
+stroke(main, COL_STROKE, 1)
+
+local mainLayout = Instance.new("UIListLayout")
+mainLayout.FillDirection = Enum.FillDirection.Vertical
+mainLayout.Padding = UDim.new(0, 8)
+mainLayout.SortOrder = Enum.SortOrder.LayoutOrder
+mainLayout.Parent = main
+pad(main, 10, 10, 10, 10)
+
+-- Draggable behavior
+do
+	local dragging, dragStart, startPos
+	local UIS = game:GetService("UserInputService")
+	main.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = main.Position
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+	UIS.InputChanged:Connect(function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			local delta = input.Position - dragStart
+			main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		end
+	end)
+end
+
+-- ============ TOP: PROFILE CARD ============
+local profileCard = Instance.new("Frame")
+profileCard.Name = "ProfileCard"
+profileCard.Size = UDim2.new(1, 0, 0, 110)
+profileCard.BackgroundColor3 = COL_PANEL
+profileCard.BorderSizePixel = 0
+profileCard.LayoutOrder = 1
+profileCard.Parent = main
+corner(profileCard, 12)
+stroke(profileCard, COL_STROKE, 1)
+pad(profileCard, 10, 10, 10, 10)
+
+-- Avatar button (click to show larger image / toggle)
+local avatarBtn = Instance.new("ImageButton")
+avatarBtn.Name = "AvatarButton"
+avatarBtn.Size = UDim2.fromOffset(64, 64)
+avatarBtn.Position = UDim2.fromOffset(0, 0)
+avatarBtn.BackgroundColor3 = COL_PANEL_ALT
+avatarBtn.AutoButtonColor = false
+avatarBtn.Image = ""
+avatarBtn.Parent = profileCard
+corner(avatarBtn, 32) -- circular
+stroke(avatarBtn, COL_ACCENT, 2)
+
+-- Load the player's Roblox avatar headshot
+local function loadAvatar()
+	local userId = Players_LocalPlayer.UserId
+	local ok, content = pcall(function()
+		return Players.GetUserThumbnailAsync
+	end)
+	local success, result = pcall(function()
+		return Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size180x180)
+	end)
+	if success then
+		avatarBtn.Image = result
+	end
+end
+loadAvatar()
+
+-- Toggle: click avatar to swap between headshot and full body image
+local showingHeadshot = true
+avatarBtn.MouseButton1Click:Connect(function()
+	local userId = Players_LocalPlayer.UserId
+	showingHeadshot = not showingHeadshot
+	local thumbType = showingHeadshot and Enum.ThumbnailType.HeadShot or Enum.ThumbnailType.AvatarBust
+	local ok, result = pcall(function()
+		return Players:GetUserThumbnailAsync(userId, thumbType, Enum.ThumbnailSize.Size180x180)
+	end)
+	if ok then
+		local tween = TweenService:Create(avatarBtn, TweenInfo.new(0.12), {ImageTransparency = 1})
+		tween:Play()
+		tween.Completed:Wait()
+		avatarBtn.Image = result
+		TweenService:Create(avatarBtn, TweenInfo.new(0.12), {ImageTransparency = 0}):Play()
+	end
+end)
+
+-- Name (top area, beside avatar) — rounded rectangle button
+local nameBtn = Instance.new("TextButton")
+nameBtn.Name = "NameButton"
+nameBtn.Size = UDim2.new(1, -74, 0, 26)
+nameBtn.Position = UDim2.fromOffset(74, 0)
+nameBtn.BackgroundColor3 = COL_PANEL_ALT
+nameBtn.AutoButtonColor = false
+nameBtn.Text = ""
+nameBtn.Parent = profileCard
+corner(nameBtn, 8)
+stroke(nameBtn, COL_STROKE, 1)
+pad(nameBtn, 10, 0, 10, 0)
+
+local nameText = newLabel({
+	Name = "NameText",
+	Size = UDim2.new(1, 0, 1, 0),
+	Text = PLAYER_DATA.displayName,
+	Font = Enum.Font.GothamBold,
+	TextSize = 14,
+	TextColor3 = COL_TEXT,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	TextTruncate = Enum.TextTruncate.AtEnd,
+})
+nameText.Parent = nameBtn
+
+local levelLbl = newLabel({
+	Name = "Level",
+	Size = UDim2.new(1, -74, 0, 18),
+	Position = UDim2.fromOffset(74, 32),
+	Text = "Level " .. tostring(PLAYER_DATA.level),
+	Font = Enum.Font.GothamMedium,
+	TextSize = 13,
+	TextColor3 = COL_ACCENT,
+})
+levelLbl.Parent = profileCard
+
+local worldLbl = newLabel({
+	Name = "World",
+	Size = UDim2.new(1, -74, 0, 16),
+	Position = UDim2.fromOffset(74, 52),
+	Text = PLAYER_DATA.world,
+	Font = Enum.Font.Gotham,
+	TextSize = 12,
+	TextColor3 = COL_SUBTEXT,
+})
+worldLbl.Parent = profileCard
+
+-- Bottom row inside profile card: Time / Beli / Fragments
+local statsRow = Instance.new("Frame")
+statsRow.Name = "StatsRow"
+statsRow.Size = UDim2.new(1, 0, 0, 26)
+statsRow.Position = UDim2.new(0, 0, 1, -26)
+statsRow.BackgroundTransparency = 1
+statsRow.Parent = profileCard
+
+local statsLayout = Instance.new("UIListLayout")
+statsLayout.FillDirection = Enum.FillDirection.Horizontal
+statsLayout.Padding = UDim.new(0, 6)
+statsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+statsLayout.Parent = statsRow
+
+local function miniStat(labelText, valueText, color, order)
+	local box = Instance.new("Frame")
+	box.Size = UDim2.new(0.333, -4, 1, 0)
+	box.BackgroundColor3 = COL_PANEL_ALT
+	box.LayoutOrder = order
+	corner(box, 6)
+	local txt = newLabel({
+		Size = UDim2.new(1, -6, 1, 0),
+		Position = UDim2.fromOffset(6, 0),
+		Text = labelText .. "\n" .. valueText,
+		Font = Enum.Font.Gotham,
+		TextSize = 10,
+		TextColor3 = color or COL_SUBTEXT,
+		TextWrapped = true,
+	})
+	txt.Parent = box
+	return box
+end
+
+miniStat("TIME", PLAYER_DATA.timeGame, COL_SUBTEXT, 1).Parent = statsRow
+miniStat("BELI", PLAYER_DATA.beli, Color3.fromRGB(255, 210, 90), 2).Parent = statsRow
+miniStat("FRAGMENTS", PLAYER_DATA.fragments, Color3.fromRGB(180, 140, 255), 3).Parent = statsRow
+
+-- ============ HORIZONTAL TAB MENU (Profile / Items) ============
+local tabBar = Instance.new("Frame")
+tabBar.Name = "TabBar"
+tabBar.Size = UDim2.new(1, 0, 0, 32)
+tabBar.BackgroundColor3 = COL_PANEL
+tabBar.LayoutOrder = 2
+tabBar.Parent = main
+corner(tabBar, 8)
+stroke(tabBar, COL_STROKE, 1)
+pad(tabBar, 3, 3, 3, 3)
+
+local tabLayout = Instance.new("UIListLayout")
+tabLayout.FillDirection = Enum.FillDirection.Horizontal
+tabLayout.Padding = UDim.new(0, 3)
+tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+tabLayout.Parent = tabBar
+
+local tabButtons = {}
+local function createTab(labelText, key, order)
+	local btn = Instance.new("TextButton")
+	btn.Name = "Tab_" .. key
+	btn.Size = UDim2.new(0.5, order == 1 and -1.5 or -1.5, 1, 0)
+	btn.BackgroundColor3 = COL_PANEL_ALT
+	btn.AutoButtonColor = false
+	btn.Text = labelText
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 12
+	btn.TextColor3 = COL_SUBTEXT
+	btn.LayoutOrder = order
+	btn.Parent = tabBar
+	corner(btn, 6)
+	tabButtons[key] = btn
+	return btn
+end
+
+local tabProfile = createTab("PROFILE", "profile", 1)
+local tabItems = createTab("ITEMS", "items", 2)
+
+-- ============ PAGE CONTAINER ============
+local pageContainer = Instance.new("Frame")
+pageContainer.Name = "PageContainer"
+pageContainer.Size = UDim2.new(1, 0, 0, 274) -- explicit height: fills remaining space below profile+tabs
+pageContainer.BackgroundTransparency = 1
+pageContainer.LayoutOrder = 3
+pageContainer.Parent = main
+
+-- ---- PROFILE PAGE (extra info / placeholder) ----
+local profilePage = Instance.new("Frame")
+profilePage.Name = "ProfilePage"
+profilePage.Size = UDim2.new(1, 0, 1, 0)
+profilePage.BackgroundColor3 = COL_PANEL
+profilePage.Visible = true
+profilePage.Parent = pageContainer
+corner(profilePage, 12)
+stroke(profilePage, COL_STROKE, 1)
+pad(profilePage, 12, 12, 12, 12)
+
+local profilePageLbl = newLabel({
+	Size = UDim2.new(1, 0, 0, 20),
+	Text = "Player Summary",
+	Font = Enum.Font.GothamBold,
+	TextSize = 14,
+	TextColor3 = COL_TEXT,
+})
+profilePageLbl.Parent = profilePage
+
+local profilePageDesc = newLabel({
+	Size = UDim2.new(1, 0, 0, 60),
+	Position = UDim2.fromOffset(0, 26),
+	Text = "Level " .. PLAYER_DATA.level .. " • " .. PLAYER_DATA.world .. "\nPlaytime: " .. PLAYER_DATA.timeGame .. "\nBeli: " .. PLAYER_DATA.beli .. "  •  Fragments: " .. PLAYER_DATA.fragments,
+	Font = Enum.Font.Gotham,
+	TextSize = 12,
+	TextColor3 = COL_SUBTEXT,
+	TextWrapped = true,
+	TextYAlignment = Enum.TextYAlignment.Top,
+})
+profilePageDesc.Parent = profilePage
+
+-- ---- ITEMS PAGE ----
+local itemsPage = Instance.new("Frame")
+itemsPage.Name = "ItemsPage"
+itemsPage.Size = UDim2.new(1, 0, 1, 0)
+itemsPage.BackgroundTransparency = 1
+itemsPage.Visible = false
+itemsPage.Parent = pageContainer
+
+local itemsPageLayout = Instance.new("UIListLayout")
+itemsPageLayout.FillDirection = Enum.FillDirection.Vertical
+itemsPageLayout.Padding = UDim.new(0, 8)
+itemsPageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+itemsPageLayout.Parent = itemsPage
+
+-- ============ WEAPON STATUS BAR (inside Items page) ============
+local weaponBar = Instance.new("Frame")
+weaponBar.Name = "WeaponStatusBar"
+weaponBar.Size = UDim2.new(1, 0, 0, 30)
+weaponBar.BackgroundColor3 = COL_PANEL
+weaponBar.LayoutOrder = 1
+weaponBar.Parent = itemsPage
+corner(weaponBar, 8)
+stroke(weaponBar, COL_STROKE, 1)
+
+local weaponLbl = newLabel({
+	Size = UDim2.new(1, -10, 1, 0),
+	Position = UDim2.fromOffset(10, 0),
+	Text = "Weapon Progress:  " .. (function()
+		local owned = 0
+		for _, item in ipairs(ITEM_LIST) do
+			if item.status then owned += 1 end
+		end
+		return owned .. " / " .. #ITEM_LIST .. " owned"
+	end)(),
+	Font = Enum.Font.GothamBold,
+	TextSize = 13,
+	TextColor3 = COL_TEXT,
+})
+weaponLbl.Parent = weaponBar
+
+-- ============ HORIZONTAL FILTER MENU (All / Owned / Missing) ============
+local filterBar = Instance.new("Frame")
+filterBar.Name = "FilterBar"
+filterBar.Size = UDim2.new(1, 0, 0, 26)
+filterBar.BackgroundColor3 = COL_PANEL
+filterBar.LayoutOrder = 2
+filterBar.Parent = itemsPage
+corner(filterBar, 8)
+stroke(filterBar, COL_STROKE, 1)
+pad(filterBar, 3, 3, 3, 3)
+
+local filterLayout = Instance.new("UIListLayout")
+filterLayout.FillDirection = Enum.FillDirection.Horizontal
+filterLayout.Padding = UDim.new(0, 3)
+filterLayout.SortOrder = Enum.SortOrder.LayoutOrder
+filterLayout.Parent = filterBar
+
+local filterButtons = {}
+local function createFilterBtn(labelText, key, order)
+	local btn = Instance.new("TextButton")
+	btn.Name = "Filter_" .. key
+	btn.Size = UDim2.new(0.333, -2, 1, 0)
+	btn.BackgroundColor3 = COL_PANEL_ALT
+	btn.AutoButtonColor = false
+	btn.Text = labelText
+	btn.Font = Enum.Font.GothamMedium
+	btn.TextSize = 11
+	btn.TextColor3 = COL_SUBTEXT
+	btn.LayoutOrder = order
+	btn.Parent = filterBar
+	corner(btn, 5)
+	filterButtons[key] = btn
+	return btn
+end
+
+local filterAll = createFilterBtn("ALL", "all", 1)
+local filterOwned = createFilterBtn("OWNED", "owned", 2)
+local filterMissing = createFilterBtn("MISSING", "missing", 3)
+
+-- ============ ITEM LIST ============
+local listContainer = Instance.new("Frame")
+listContainer.Name = "ListContainer"
+listContainer.Size = UDim2.new(1, 0, 0, 202) -- fills remaining space in itemsPage
+listContainer.BackgroundColor3 = COL_PANEL
+listContainer.LayoutOrder = 3
+listContainer.Parent = itemsPage
+corner(listContainer, 12)
+stroke(listContainer, COL_STROKE, 1)
+pad(listContainer, 6, 6, 6, 6)
+
+local scroll = Instance.new("ScrollingFrame")
+scroll.Name = "ItemScroll"
+scroll.Size = UDim2.new(1, 0, 1, 0)
+scroll.BackgroundTransparency = 1
+scroll.BorderSizePixel = 0
+scroll.ScrollBarThickness = 4
+scroll.ScrollBarImageColor3 = COL_ACCENT
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scroll.Parent = listContainer
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.FillDirection = Enum.FillDirection.Vertical
+listLayout.Padding = UDim.new(0, 5)
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Parent = scroll
+
+local function createItemRow(item, order)
+	local row = Instance.new("Frame")
+	row.Name = item.name
+	row.Size = UDim2.new(1, 0, 0, 32)
+	row.BackgroundColor3 = COL_PANEL_ALT
+	row.LayoutOrder = order
+	row.Parent = scroll
+	corner(row, 8)
+
+	local nameLbl = newLabel({
+		Size = UDim2.new(1, -70, 1, 0),
+		Position = UDim2.fromOffset(10, 0),
+		Text = item.name,
+		Font = Enum.Font.Gotham,
+		TextSize = 13,
+		TextColor3 = COL_TEXT,
+	})
+	nameLbl.Parent = row
+
+	-- status pill (right side)
+	local pill = Instance.new("Frame")
+	pill.Size = UDim2.fromOffset(58, 20)
+	pill.Position = UDim2.new(1, -64, 0.5, -10)
+	pill.BackgroundColor3 = item.status and COL_GREEN or COL_RED
+	pill.BackgroundTransparency = 0.15
+	pill.Parent = row
+	corner(pill, 10)
+	stroke(pill, item.status and COL_GREEN or COL_RED, 1)
+
+	local pillLbl = newLabel({
+		Size = UDim2.new(1, 0, 1, 0),
+		Text = item.status and "OWNED" or "MISSING",
+		Font = Enum.Font.GothamBold,
+		TextSize = 10,
+		TextColor3 = Color3.fromRGB(255, 255, 255),
+		TextXAlignment = Enum.TextXAlignment.Center,
+	})
+	pillLbl.Parent = pill
+
+	-- small colored dot indicator on the left edge too
+	local dot = Instance.new("Frame")
+	dot.Size = UDim2.fromOffset(6, 6)
+	dot.Position = UDim2.new(0, 0, 0.5, -3)
+	dot.BackgroundColor3 = item.status and COL_GREEN or COL_RED
+	dot.Parent = row
+	corner(dot, 3)
+
+	return row
+end
+
+for i, item in ipairs(ITEM_LIST) do
+	local row = createItemRow(item, i)
+	row:SetAttribute("Owned", item.status)
+end
+
+-- ============ TAB SWITCHING LOGIC ============
+local function setActiveTab(key)
+	for tKey, btn in pairs(tabButtons) do
+		if tKey == key then
+			btn.BackgroundColor3 = COL_ACCENT
+			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		else
+			btn.BackgroundColor3 = COL_PANEL_ALT
+			btn.TextColor3 = COL_SUBTEXT
+		end
+	end
+	profilePage.Visible = (key == "profile")
+	itemsPage.Visible = (key == "items")
+end
+
+tabProfile.MouseButton1Click:Connect(function()
+	setActiveTab("profile")
+end)
+tabItems.MouseButton1Click:Connect(function()
+	setActiveTab("items")
+end)
+
+setActiveTab("profile")
+
+-- ============ FILTER SWITCHING LOGIC ============
+local function setActiveFilter(key)
+	for fKey, btn in pairs(filterButtons) do
+		if fKey == key then
+			btn.BackgroundColor3 = COL_ACCENT
+			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		else
+			btn.BackgroundColor3 = COL_PANEL_ALT
+			btn.TextColor3 = COL_SUBTEXT
+		end
+	end
+	for _, row in ipairs(scroll:GetChildren()) do
+		if row:IsA("Frame") then
+			local owned = row:GetAttribute("Owned")
+			if key == "all" then
+				row.Visible = true
+			elseif key == "owned" then
+				row.Visible = owned == true
+			elseif key == "missing" then
+				row.Visible = owned == false
+			end
+		end
+	end
+end
+
+filterAll.MouseButton1Click:Connect(function()
+	setActiveFilter("all")
+end)
+filterOwned.MouseButton1Click:Connect(function()
+	setActiveFilter("owned")
+end)
+filterMissing.MouseButton1Click:Connect(function()
+	setActiveFilter("missing")
+end)
+
+setActiveFilter("all")
+
+-- ============ Public API to update item status at runtime ============
+local Kaitun = {}
+
+function Kaitun.SetItemStatus(itemName, ownedBool)
+	local row = scroll:FindFirstChild(itemName)
+	if not row then return end
+	row:SetAttribute("Owned", ownedBool)
+	for _, child in ipairs(row:GetChildren()) do
+		if child:IsA("Frame") and child.Size.X.Offset == 58 then
+			child.BackgroundColor3 = ownedBool and COL_GREEN or COL_RED
+			local st = child:FindFirstChildOfClass("UIStroke")
+			if st then st.Color = ownedBool and COL_GREEN or COL_RED end
+			local lbl = child:FindFirstChildOfClass("TextLabel")
+			if lbl then lbl.Text = ownedBool and "OWNED" or "MISSING" end
+		elseif child:IsA("Frame") and child.Size.X.Offset == 6 then
+			child.BackgroundColor3 = ownedBool and COL_GREEN or COL_RED
+		end
+	end
+	-- update progress label
+	local owned = 0
+	for _, item in ipairs(ITEM_LIST) do
+		if item.name == itemName then item.status = ownedBool end
+		if item.status then owned += 1 end
+	end
+	weaponLbl.Text = "Weapon Progress:  " .. owned .. " / " .. #ITEM_LIST .. " owned"
+end
+
+return Kaitun
