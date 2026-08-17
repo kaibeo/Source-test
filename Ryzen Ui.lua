@@ -94,6 +94,14 @@ local function newLabel(props)
 	return lbl
 end
 
+local function countOwned()
+	local owned = 0
+	for _, item in ipairs(ITEM_LIST) do
+		if item.status then owned += 1 end
+	end
+	return owned
+end
+
 -- ================= ROOT GUI =================
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "KaitunBF_UI"
@@ -107,7 +115,8 @@ local MAIN_W, MAIN_H = 800, 420
 local main = Instance.new("Frame")
 main.Name = "Main"
 main.Size = UDim2.fromOffset(MAIN_W, MAIN_H)
-main.Position = UDim2.fromOffset(20, 20)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.Position = UDim2.new(0.5, 0, 0.5, 0)
 main.BackgroundColor3 = COL_BG
 main.BorderSizePixel = 0
 main.Active = true
@@ -147,6 +156,35 @@ do
 		end
 	end)
 end
+
+-- ============ TOGGLE BUTTON (show / hide the whole UI) ============
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Name = "ToggleButton"
+toggleBtn.Size = UDim2.fromOffset(46, 46)
+toggleBtn.Position = UDim2.fromOffset(20, 20)
+toggleBtn.BackgroundColor3 = COL_ACCENT
+toggleBtn.AutoButtonColor = false
+toggleBtn.Text = "☰"
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.TextSize = 20
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleBtn.ZIndex = 50
+toggleBtn.Parent = screenGui
+corner(toggleBtn, 23)
+stroke(toggleBtn, COL_STROKE, 1)
+gradient(toggleBtn, Color3.fromRGB(100, 170, 255), Color3.fromRGB(70, 130, 220), 90)
+
+local uiVisible = true
+local function refreshToggleLook()
+	toggleBtn.Text = uiVisible and "✕" or "☰"
+end
+refreshToggleLook()
+
+toggleBtn.MouseButton1Click:Connect(function()
+	uiVisible = not uiVisible
+	main.Visible = uiVisible
+	refreshToggleLook()
+end)
 
 local CONTENT_H = MAIN_H - (mainPad * 2) -- 396
 local SIDEBAR_W = 220
@@ -386,31 +424,107 @@ local profilePageLbl = newLabel({
 })
 profilePageLbl.Parent = profilePage
 
-local profilePageDesc = newLabel({
-	Size = UDim2.new(1, 0, 0, 90),
-	Position = UDim2.fromOffset(0, 30),
-	Text = "Level " .. PLAYER_DATA.level .. "  •  " .. PLAYER_DATA.world ..
-		"\nPlaytime: " .. PLAYER_DATA.timeGame ..
-		"\nBeli: " .. PLAYER_DATA.beli .. "   •   Fragments: " .. PLAYER_DATA.fragments,
-	Font = Enum.Font.Gotham,
-	TextSize = 13,
-	TextColor3 = COL_SUBTEXT,
-	TextWrapped = true,
-	TextYAlignment = Enum.TextYAlignment.Top,
-	LineHeight = 1.4,
-})
-profilePageDesc.Parent = profilePage
+-- Card grid: Level / World / Playtime / Beli / Fragments / Weapon Progress
+local summaryGrid = Instance.new("Frame")
+summaryGrid.Name = "SummaryGrid"
+summaryGrid.Size = UDim2.new(1, 0, 1, -32)
+summaryGrid.Position = UDim2.fromOffset(0, 32)
+summaryGrid.BackgroundTransparency = 1
+summaryGrid.Parent = profilePage
 
--- Quick summary of item progress on the profile page too
-local profileProgressLbl = newLabel({
-	Size = UDim2.new(1, 0, 0, 20),
-	Position = UDim2.fromOffset(0, 128),
-	Text = "",
-	Font = Enum.Font.GothamBold,
-	TextSize = 13,
-	TextColor3 = COL_ACCENT_2,
+local summaryGridLayout = Instance.new("UIGridLayout")
+summaryGridLayout.CellSize = UDim2.new(0.5, -6, 0, 72)
+summaryGridLayout.CellPadding = UDim2.new(0, 12, 0, 12)
+summaryGridLayout.SortOrder = Enum.SortOrder.LayoutOrder
+summaryGridLayout.Parent = summaryGrid
+
+local function summaryCard(labelText, valueText, color, order)
+	local box = Instance.new("Frame")
+	box.BackgroundColor3 = COL_PANEL_ALT
+	box.LayoutOrder = order
+	box.Parent = summaryGrid
+	corner(box, 10)
+	stroke(box, COL_STROKE, 1)
+	pad(box, 14, 12, 14, 12)
+
+	local lbl = newLabel({
+		Size = UDim2.new(1, 0, 0, 14),
+		Text = labelText,
+		Font = Enum.Font.GothamMedium,
+		TextSize = 10,
+		TextColor3 = COL_SUBTEXT,
+	})
+	lbl.Parent = box
+
+	local val = newLabel({
+		Name = "Value",
+		Size = UDim2.new(1, 0, 0, 24),
+		Position = UDim2.fromOffset(0, 20),
+		Text = valueText,
+		Font = Enum.Font.GothamBold,
+		TextSize = 17,
+		TextColor3 = color or COL_TEXT,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+	})
+	val.Parent = box
+
+	return box
+end
+
+summaryCard("LEVEL", tostring(PLAYER_DATA.level), COL_ACCENT_2, 1)
+summaryCard("WORLD", PLAYER_DATA.world, COL_TEXT, 2)
+summaryCard("PLAYTIME", PLAYER_DATA.timeGame, COL_SUBTEXT, 3)
+summaryCard("BELI", PLAYER_DATA.beli, Color3.fromRGB(255, 210, 90), 4)
+summaryCard("FRAGMENTS", PLAYER_DATA.fragments, Color3.fromRGB(180, 140, 255), 5)
+
+-- Weapon progress card (label + numbers + progress bar)
+local progressCard = Instance.new("Frame")
+progressCard.Name = "ProgressCard"
+progressCard.BackgroundColor3 = COL_PANEL_ALT
+progressCard.LayoutOrder = 6
+progressCard.Parent = summaryGrid
+corner(progressCard, 10)
+stroke(progressCard, COL_STROKE, 1)
+pad(progressCard, 14, 12, 14, 12)
+
+local progressLbl = newLabel({
+	Size = UDim2.new(1, -60, 0, 14),
+	Text = "WEAPON PROGRESS",
+	Font = Enum.Font.GothamMedium,
+	TextSize = 10,
+	TextColor3 = COL_SUBTEXT,
 })
-profileProgressLbl.Parent = profilePage
+progressLbl.Parent = progressCard
+
+local progressValueLbl = newLabel({
+	Name = "Value",
+	Size = UDim2.new(0, 60, 0, 14),
+	Position = UDim2.new(1, -60, 0, 0),
+	Text = countOwned() .. " / " .. #ITEM_LIST,
+	Font = Enum.Font.GothamBold,
+	TextSize = 12,
+	TextColor3 = COL_ACCENT_2,
+	TextXAlignment = Enum.TextXAlignment.Right,
+})
+progressValueLbl.Parent = progressCard
+
+local progressTrack = Instance.new("Frame")
+progressTrack.Name = "Track"
+progressTrack.Size = UDim2.new(1, 0, 0, 8)
+progressTrack.Position = UDim2.fromOffset(0, 26)
+progressTrack.BackgroundColor3 = COL_PANEL
+progressTrack.BorderSizePixel = 0
+progressTrack.Parent = progressCard
+corner(progressTrack, 4)
+
+local progressFill = Instance.new("Frame")
+progressFill.Name = "Fill"
+progressFill.Size = UDim2.new(#ITEM_LIST > 0 and (countOwned() / #ITEM_LIST) or 0, 0, 1, 0)
+progressFill.BackgroundColor3 = COL_GREEN
+progressFill.BorderSizePixel = 0
+progressFill.Parent = progressTrack
+corner(progressFill, 4)
+gradient(progressFill, Color3.fromRGB(90, 220, 150), COL_GREEN, 0)
 
 -- ---- ITEMS PAGE ----
 local itemsPage = Instance.new("Frame")
@@ -437,14 +551,6 @@ corner(weaponBar, 8)
 stroke(weaponBar, COL_STROKE, 1)
 pad(weaponBar, 12, 0, 12, 0)
 
-local function countOwned()
-	local owned = 0
-	for _, item in ipairs(ITEM_LIST) do
-		if item.status then owned += 1 end
-	end
-	return owned
-end
-
 local weaponLbl = newLabel({
 	Size = UDim2.new(1, 0, 1, 0),
 	Text = "Weapon Progress:  " .. countOwned() .. " / " .. #ITEM_LIST .. " owned",
@@ -455,7 +561,10 @@ local weaponLbl = newLabel({
 weaponLbl.Parent = weaponBar
 
 local function updateProfileProgress()
-	profileProgressLbl.Text = "Weapons Owned: " .. countOwned() .. " / " .. #ITEM_LIST
+	local owned = countOwned()
+	progressValueLbl.Text = owned .. " / " .. #ITEM_LIST
+	local pct = (#ITEM_LIST > 0) and (owned / #ITEM_LIST) or 0
+	TweenService:Create(progressFill, TweenInfo.new(0.2), {Size = UDim2.new(pct, 0, 1, 0)}):Play()
 end
 updateProfileProgress()
 
@@ -531,12 +640,22 @@ local function createItemRow(item, order)
 	row.Name = item.name
 	row.BackgroundColor3 = COL_PANEL_ALT
 	row.LayoutOrder = order
+	row.ClipsDescendants = true
 	row.Parent = scroll
 	corner(row, 8)
-	pad(row, 10, 0, 8, 0)
+	pad(row, 14, 0, 10, 0)
+
+	-- colored accent strip along the left edge (status at a glance)
+	local accent = Instance.new("Frame")
+	accent.Name = "Accent"
+	accent.Size = UDim2.new(0, 4, 1, 0)
+	accent.BorderSizePixel = 0
+	accent.BackgroundColor3 = item.status and COL_GREEN or COL_RED
+	accent.ZIndex = 2
+	accent.Parent = row
 
 	local nameLbl = newLabel({
-		Size = UDim2.new(1, -64, 1, 0),
+		Size = UDim2.new(1, -80, 1, 0),
 		Text = item.name,
 		Font = Enum.Font.Gotham,
 		TextSize = 13,
@@ -545,33 +664,27 @@ local function createItemRow(item, order)
 	})
 	nameLbl.Parent = row
 
-	-- status pill (right side)
+	-- status chip (right side) — soft tinted background + colored text, cleaner look
 	local pill = Instance.new("Frame")
-	pill.Size = UDim2.fromOffset(58, 20)
-	pill.Position = UDim2.new(1, -58, 0.5, -10)
+	pill.Name = "Pill"
+	pill.Size = UDim2.fromOffset(72, 22)
+	pill.Position = UDim2.new(1, -72, 0.5, -11)
 	pill.BackgroundColor3 = item.status and COL_GREEN or COL_RED
-	pill.BackgroundTransparency = 0.15
+	pill.BackgroundTransparency = 0.85
 	pill.Parent = row
-	corner(pill, 10)
+	corner(pill, 11)
 	stroke(pill, item.status and COL_GREEN or COL_RED, 1)
 
 	local pillLbl = newLabel({
+		Name = "PillText",
 		Size = UDim2.new(1, 0, 1, 0),
-		Text = item.status and "OWNED" or "MISSING",
+		Text = item.status and "✓  OWNED" or "✕  MISSING",
 		Font = Enum.Font.GothamBold,
 		TextSize = 10,
-		TextColor3 = Color3.fromRGB(255, 255, 255),
+		TextColor3 = item.status and COL_GREEN or COL_RED,
 		TextXAlignment = Enum.TextXAlignment.Center,
 	})
 	pillLbl.Parent = pill
-
-	-- small colored dot indicator on the left edge too
-	local dot = Instance.new("Frame")
-	dot.Size = UDim2.fromOffset(6, 6)
-	dot.Position = UDim2.new(0, -6, 0.5, -3)
-	dot.BackgroundColor3 = item.status and COL_GREEN or COL_RED
-	dot.Parent = row
-	corner(dot, 3)
 
 	return row
 end
@@ -649,17 +762,24 @@ function Kaitun.SetItemStatus(itemName, ownedBool)
 	local row = scroll:FindFirstChild(itemName)
 	if not row then return end
 	row:SetAttribute("Owned", ownedBool)
-	for _, child in ipairs(row:GetChildren()) do
-		if child:IsA("Frame") and child.Size.X.Offset == 58 then
-			child.BackgroundColor3 = ownedBool and COL_GREEN or COL_RED
-			local st = child:FindFirstChildOfClass("UIStroke")
-			if st then st.Color = ownedBool and COL_GREEN or COL_RED end
-			local lbl = child:FindFirstChildOfClass("TextLabel")
-			if lbl then lbl.Text = ownedBool and "OWNED" or "MISSING" end
-		elseif child:IsA("Frame") and child.Size.X.Offset == 6 then
-			child.BackgroundColor3 = ownedBool and COL_GREEN or COL_RED
+
+	local color = ownedBool and COL_GREEN or COL_RED
+
+	local accent = row:FindFirstChild("Accent")
+	if accent then accent.BackgroundColor3 = color end
+
+	local pill = row:FindFirstChild("Pill")
+	if pill then
+		pill.BackgroundColor3 = color
+		local st = pill:FindFirstChildOfClass("UIStroke")
+		if st then st.Color = color end
+		local lbl = pill:FindFirstChild("PillText")
+		if lbl then
+			lbl.Text = ownedBool and "✓  OWNED" or "✕  MISSING"
+			lbl.TextColor3 = color
 		end
 	end
+
 	-- update progress labels (weapon bar + profile page)
 	for _, item in ipairs(ITEM_LIST) do
 		if item.name == itemName then item.status = ownedBool end
