@@ -13,24 +13,24 @@ local TweenService = game:GetService("TweenService")
 -- Edit this table to change the items you're tracking.
 -- status: true = owned (green), false = missing (red)
 local ITEM_LIST = {
-	{name = "Dragon Trident", status = true},
-	{name = "Dark Coat", status = false},
-	{name = "Soul Guitar", status = false},
-	{name = "Yeti Coat", status = true},
-	{name = "Dough Fruit", status = false},
-	{name = "Kilo Fruit", status = true},
-	{name = "Buddy Sword", status = false},
 	{name = "Cursed Dual Katana", status = false},
+	{name = "Valkyrie Helm", status = false},
+	{name = "Skull Guitar", status = false},
+	{name = "Mirror Fractal", status = false},
+	{name = "Pull Lever", status = false},
+	{name = "Sea 1", status = false},
+	{name = "Sea 2", status = false},
+	{name = "Sea 3", status = false},
 }
 
 -- Player stats (wire these up to real values from your game/leaderstats)
 local PLAYER_DATA = {
 	displayName = Players_LocalPlayer.DisplayName,
-	level = 2450,
-	world = "World 3 - Third Sea",
-	timeGame = "182h 40m",
-	beli = "12.4M",
-	fragments = "3,200",
+	level = null,
+	world = "null",
+	timeGame = "null",
+	beli = "null",
+	fragments = "null",
 }
 
 -- ================= COLORS =================
@@ -81,6 +81,49 @@ local function gradient(inst, c1, c2, rotation)
 	return g
 end
 
+-- Format 1234567 -> "1,234,567"
+local function formatNumber(n)
+	n = math.floor(n or 0)
+	local sign = ""
+	if n < 0 then sign = "-"; n = -n end
+	local formatted = tostring(n)
+	local k
+	repeat
+		formatted, k = formatted:gsub("^(%d+)(%d%d%d)", "%1,%2")
+	until k == 0
+	return sign .. formatted
+end
+
+-- Animate a TextLabel's number smoothly to a new target value.
+-- formatFn(n) is optional — defaults to plain "1,234,567"; pass your own to add
+-- a prefix/suffix, e.g. function(n) return "Level " .. formatNumber(n) end
+local function TweenNumber(label, targetValue, duration, formatFn)
+	if not label then return end
+	targetValue = tonumber(targetValue) or 0
+	duration = duration or 0.5
+	formatFn = formatFn or formatNumber
+	local startValue = tonumber(label:GetAttribute("NumValue")) or 0
+	if startValue == targetValue then
+		label.Text = formatFn(targetValue)
+		label:SetAttribute("NumValue", targetValue)
+		return
+	end
+	local proxy = Instance.new("NumberValue")
+	proxy.Value = startValue
+	local conn
+	conn = proxy:GetPropertyChangedSignal("Value"):Connect(function()
+		label.Text = formatFn(proxy.Value)
+	end)
+	local tween = TweenService:Create(proxy, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Value = targetValue})
+	tween.Completed:Connect(function()
+		conn:Disconnect()
+		proxy:Destroy()
+		label.Text = formatFn(targetValue)
+		label:SetAttribute("NumValue", targetValue)
+	end)
+	tween:Play()
+end
+
 local function newLabel(props)
 	local lbl = Instance.new("TextLabel")
 	lbl.BackgroundTransparency = 1
@@ -104,7 +147,7 @@ end
 
 -- ================= ROOT GUI =================
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "KaitunBF_UI"
+screenGui.Name = "Ryzen Kaitun 3.5"
 screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.DisplayOrder = 10
@@ -128,8 +171,8 @@ local mainPad = 12
 pad(main, mainPad, mainPad, mainPad, mainPad)
 
 local mainLayout = Instance.new("UIListLayout")
-mainLayout.FillDirection = Enum.FillDirection.Horizontal
-mainLayout.Padding = UDim.new(0, 12)
+mainLayout.FillDirection = Enum.FillDirection.Vertical
+mainLayout.Padding = UDim.new(0, 10)
 mainLayout.SortOrder = Enum.SortOrder.LayoutOrder
 mainLayout.Parent = main
 
@@ -186,10 +229,63 @@ toggleBtn.MouseButton1Click:Connect(function()
 	refreshToggleLook()
 end)
 
-local CONTENT_H = MAIN_H - (mainPad * 2) -- 396
+local HEADER_H = 40
+local CONTENT_H = MAIN_H - (mainPad * 2) - HEADER_H - 10 -- trừ header + gap
 local SIDEBAR_W = 220
 local GAP = 12
 local CONTENT_W_OFFSET = -(SIDEBAR_W + GAP)
+
+-- ============ HEADER (thanh tiêu đề trên cùng) ============
+local header = Instance.new("Frame")
+header.Name = "Header"
+header.Size = UDim2.new(1, 0, 0, HEADER_H)
+header.BackgroundColor3 = COL_PANEL
+header.LayoutOrder = 1
+header.Parent = main
+corner(header, 12)
+stroke(header, COL_STROKE, 1)
+pad(header, 14, 0, 14, 0)
+
+-- Hub title (trái)
+local hubTitleLbl = newLabel({
+	Name = "HubTitle",
+	Size = UDim2.new(0.5, 0, 1, 0),
+	Text = "KAITUN HUB",
+	Font = Enum.Font.GothamBlack,
+	TextSize = 16,
+	TextColor3 = COL_TEXT,
+	TextXAlignment = Enum.TextXAlignment.Left,
+})
+hubTitleLbl.Parent = header
+gradient(hubTitleLbl, COL_ACCENT_2, COL_ACCENT, 0)
+
+-- Tên người chơi (phải)
+local headerNameLbl = newLabel({
+	Name = "HeaderPlayerName",
+	Size = UDim2.new(0.5, 0, 1, 0),
+	Position = UDim2.new(0.5, 0, 0, 0),
+	Text = PLAYER_DATA.displayName,
+	Font = Enum.Font.GothamBold,
+	TextSize = 14,
+	TextColor3 = COL_SUBTEXT,
+	TextXAlignment = Enum.TextXAlignment.Right,
+	TextTruncate = Enum.TextTruncate.AtEnd,
+})
+headerNameLbl.Parent = header
+
+-- ============ BODY (chứa Sidebar + Content, nằm ngang) ============
+local body = Instance.new("Frame")
+body.Name = "Body"
+body.Size = UDim2.new(1, 0, 1, -(HEADER_H + 10))
+body.BackgroundTransparency = 1
+body.LayoutOrder = 2
+body.Parent = main
+
+local bodyLayout = Instance.new("UIListLayout")
+bodyLayout.FillDirection = Enum.FillDirection.Horizontal
+bodyLayout.Padding = UDim.new(0, GAP)
+bodyLayout.SortOrder = Enum.SortOrder.LayoutOrder
+bodyLayout.Parent = body
 
 -- ============ LEFT SIDEBAR (Profile / Avatar / Stats) ============
 local sidebar = Instance.new("Frame")
@@ -198,7 +294,7 @@ sidebar.Size = UDim2.fromOffset(SIDEBAR_W, CONTENT_H)
 sidebar.BackgroundColor3 = COL_SIDEBAR
 sidebar.BorderSizePixel = 0
 sidebar.LayoutOrder = 1
-sidebar.Parent = main
+sidebar.Parent = body
 corner(sidebar, 14)
 stroke(sidebar, COL_STROKE, 1)
 gradient(sidebar, Color3.fromRGB(30, 30, 36), Color3.fromRGB(22, 22, 27), 100)
@@ -327,6 +423,7 @@ local function sideStat(labelText, valueText, color, order)
 	lbl.Parent = box
 
 	local val = newLabel({
+		Name = "Value",
 		Size = UDim2.new(1, 0, 0, 18),
 		Position = UDim2.fromOffset(0, 15),
 		Text = valueText,
@@ -339,9 +436,11 @@ local function sideStat(labelText, valueText, color, order)
 	return box
 end
 
-sideStat("PLAYTIME", PLAYER_DATA.timeGame, COL_SUBTEXT, 6)
-sideStat("BELI", PLAYER_DATA.beli, Color3.fromRGB(255, 210, 90), 7)
-sideStat("FRAGMENTS", PLAYER_DATA.fragments, Color3.fromRGB(180, 140, 255), 8)
+local sidebarPlaytimeBox = sideStat("PLAYTIME", PLAYER_DATA.timeGame, COL_SUBTEXT, 6)
+local sidebarBeliBox = sideStat("BELI", PLAYER_DATA.beli, Color3.fromRGB(255, 210, 90), 7)
+local sidebarFragBox = sideStat("FRAGMENTS", PLAYER_DATA.fragments, Color3.fromRGB(180, 140, 255), 8)
+local sidebarBeliVal = sidebarBeliBox:FindFirstChild("Value")
+local sidebarFragVal = sidebarFragBox:FindFirstChild("Value")
 
 -- ============ RIGHT SIDE (Tabs + Pages) ============
 local content = Instance.new("Frame")
@@ -349,7 +448,7 @@ content.Name = "Content"
 content.Size = UDim2.new(1, CONTENT_W_OFFSET, 1, 0)
 content.BackgroundTransparency = 1
 content.LayoutOrder = 2
-content.Parent = main
+content.Parent = body
 
 local contentLayout = Instance.new("UIListLayout")
 contentLayout.FillDirection = Enum.FillDirection.Vertical
@@ -471,17 +570,56 @@ local function summaryCard(labelText, valueText, color, order)
 	return box
 end
 
-summaryCard("LEVEL", tostring(PLAYER_DATA.level), COL_ACCENT_2, 1)
+local levelBox = summaryCard("LEVEL", tostring(PLAYER_DATA.level), COL_ACCENT_2, 1)
 summaryCard("WORLD", PLAYER_DATA.world, COL_TEXT, 2)
-summaryCard("PLAYTIME", PLAYER_DATA.timeGame, COL_SUBTEXT, 3)
-summaryCard("BELI", PLAYER_DATA.beli, Color3.fromRGB(255, 210, 90), 4)
-summaryCard("FRAGMENTS", PLAYER_DATA.fragments, Color3.fromRGB(180, 140, 255), 5)
+local raceBox = summaryCard("RACE", "—", Color3.fromRGB(255, 150, 200), 3)
+local profilePlaytimeBox = summaryCard("PLAYTIME", PLAYER_DATA.timeGame, COL_SUBTEXT, 4)
+local beliBox = summaryCard("BELI", PLAYER_DATA.beli, Color3.fromRGB(255, 210, 90), 5)
+local fragBox = summaryCard("FRAGMENTS", PLAYER_DATA.fragments, Color3.fromRGB(180, 140, 255), 6)
+
+local LevelVal = levelBox:FindFirstChild("Value")
+local BeliVal = beliBox:FindFirstChild("Value")
+local FragVal = fragBox:FindFirstChild("Value")
+local RaceVal = raceBox:FindFirstChild("Value")
+
+-- ============ LIVE GAME TIME (tính từ lúc người chơi vào game) ============
+-- Script này chạy ngay khi PlayerGui sẵn sàng (tức lúc vào game), nên mốc
+-- thời gian bắt đầu ở đây chính là thời điểm người chơi vào game.
+local JOIN_TIME = os.time()
+
+local function formatPlaytime(totalSeconds)
+	totalSeconds = math.floor(totalSeconds)
+	local h = math.floor(totalSeconds / 3600)
+	local m = math.floor((totalSeconds % 3600) / 60)
+	local s = totalSeconds % 60
+	if h > 0 then
+		return string.format("%dh %02dm %02ds", h, m, s)
+	elseif m > 0 then
+		return string.format("%dm %02ds", m, s)
+	else
+		return string.format("%ds", s)
+	end
+end
+
+local sidebarPlaytimeVal = sidebarPlaytimeBox:FindFirstChild("Value")
+local profilePlaytimeVal = profilePlaytimeBox:FindFirstChild("Value")
+
+task.spawn(function()
+	while true do
+		local elapsed = os.time() - JOIN_TIME
+		local text = formatPlaytime(elapsed)
+		PLAYER_DATA.timeGame = text
+		if sidebarPlaytimeVal then sidebarPlaytimeVal.Text = text end
+		if profilePlaytimeVal then profilePlaytimeVal.Text = text end
+		task.wait(1)
+	end
+end)
 
 -- Weapon progress card (label + numbers + progress bar)
 local progressCard = Instance.new("Frame")
 progressCard.Name = "ProgressCard"
 progressCard.BackgroundColor3 = COL_PANEL_ALT
-progressCard.LayoutOrder = 6
+progressCard.LayoutOrder = 7
 progressCard.Parent = summaryGrid
 corner(progressCard, 10)
 stroke(progressCard, COL_STROKE, 1)
@@ -788,5 +926,164 @@ function Kaitun.SetItemStatus(itemName, ownedBool)
 	weaponLbl.Text = "Weapon Progress:  " .. owned .. " / " .. #ITEM_LIST .. " owned"
 	updateProfileProgress()
 end
+
+-- Set status by index (1-based, matches ITEM_LIST order):
+-- 1 Cursed Dual Katana, 2 Valkyrie Helm, 3 Skull Guitar, 4 Mirror Fractal,
+-- 5 Pull Lever, 6 Sea 1, 7 Sea 2, 8 Sea 3
+local function SetItemState(index, ownedBool)
+	local item = ITEM_LIST[index]
+	if not item then return end
+	Kaitun.SetItemStatus(item.name, ownedBool)
+end
+Kaitun.SetItemState = SetItemState
+
+-- ============ REAL DATA CHECK (Level / Beli / Fragments / Race / Items) ============
+-- ⚠️ CheckItem / checkPullLevel / CascadeItems are game-specific — the logic below
+-- is a best-guess default. If your game already has these functions elsewhere in
+-- your script, delete these three and keep your originals; only SetItemState,
+-- TweenNumber, LevelVal/BeliVal/FragVal/RaceVal need to exist (they now do, above).
+
+-- Default: looks for a Tool named itemName in Backpack or Character
+local function CheckItem(itemName)
+	local player = Players_LocalPlayer
+	local backpack = player:FindFirstChild("Backpack")
+	if backpack and backpack:FindFirstChild(itemName) then
+		return true
+	end
+	local char = player.Character
+	if char and char:FindFirstChild(itemName) then
+		return true
+	end
+	return false
+end
+
+-- Default: TODO — wire this to however "Pull Lever" is actually tracked
+-- (e.g. a BoolValue in player.Data, or a specific Tool/quest flag)
+local function checkPullLevel()
+	local player = Players_LocalPlayer
+	local data = player:FindFirstChild("Data")
+	if data and data:FindFirstChild("PullLever") then
+		return data.PullLever.Value == true
+	end
+	return false
+end
+
+-- Simple reveal animation for the item rows (staggered fade-in)
+local function CascadeItems()
+	local rows = {}
+	for _, row in ipairs(scroll:GetChildren()) do
+		if row:IsA("Frame") then
+			table.insert(rows, row)
+		end
+	end
+	table.sort(rows, function(a, b) return a.LayoutOrder < b.LayoutOrder end)
+	for i, row in ipairs(rows) do
+		row.BackgroundTransparency = 1
+		local nameLbl = row:FindFirstChildOfClass("TextLabel")
+		task.delay((i - 1) * 0.05, function()
+			TweenService:Create(row, TweenInfo.new(0.2), {BackgroundTransparency = 0}):Play()
+		end)
+	end
+end
+
+local itemsToCheck = {
+	"Cursed Dual Katana",
+	"Valkyrie Helm",
+	"Skull Guitar",
+	"Mirror Fractal",
+	"Pull Lever",
+}
+
+task.spawn(function()
+	task.wait(0.5)
+	CascadeItems()
+
+	while true do
+		local player = Players_LocalPlayer
+
+		-- Sea level theo PlaceId (tính trước để dùng cho World + check item biển)
+		local currentPlaceId = game.PlaceId
+		local seaLevel = 1
+		if currentPlaceId == 4442272183 or currentPlaceId == 79091703265657 then
+			seaLevel = 2
+		elseif currentPlaceId == 7449423635 or currentPlaceId == 100117331123089 then
+			seaLevel = 3
+		end
+
+		local ok0, err0 = pcall(function()
+			local worldNames = {
+				[1] = "World 1 - First Sea",
+				[2] = "World 2 - Second Sea",
+				[3] = "World 3 - Third Sea",
+			}
+			local worldText = worldNames[seaLevel] or PLAYER_DATA.world
+			worldLbl.Text = worldText
+			PLAYER_DATA.world = worldText
+		end)
+		if not ok0 then warn("[Status] Lỗi update World: " .. tostring(err0)) end
+
+		if player and player:FindFirstChild("Data") then
+			local data = player.Data
+
+			-- Level / Beli / Fragments: tách riêng, lỗi 1 cái không ảnh hưởng cái khác
+			local ok1, err1 = pcall(function()
+				TweenNumber(LevelVal, data.Level.Value)
+				TweenNumber(levelLbl, data.Level.Value, nil, function(n)
+					return "Level " .. formatNumber(n)
+				end)
+			end)
+			if not ok1 then warn("[Status] Lỗi update Level: " .. tostring(err1)) end
+
+			local ok2, err2 = pcall(function()
+				TweenNumber(BeliVal, data.Beli.Value)
+				TweenNumber(sidebarBeliVal, data.Beli.Value)
+			end)
+			if not ok2 then warn("[Status] Lỗi update Beli: " .. tostring(err2)) end
+
+			local ok3, err3 = pcall(function()
+				TweenNumber(FragVal, data.Fragments.Value)
+				TweenNumber(sidebarFragVal, data.Fragments.Value)
+			end)
+			if not ok3 then warn("[Status] Lỗi update Fragments: " .. tostring(err3)) end
+
+			-- Race: riêng vì có gọi remote (có thể fail/timeout độc lập)
+			local ok4, err4 = pcall(function()
+				local raceName = data.Race.Value
+				local raceLevel = game.ReplicatedStorage.Remotes.CommF_:InvokeServer("getRaceLevel")
+				RaceVal.Text = raceName .. " V" .. tostring(raceLevel)
+			end)
+			if not ok4 then warn("[Status] Lỗi update Race: " .. tostring(err4)) end
+		end
+
+		-- Check items
+		for i, itemName in ipairs(itemsToCheck) do
+			if itemName == "Pull Lever" then
+				local hasPullLevel = false
+				local ok, err = pcall(function()
+					hasPullLevel = checkPullLevel()
+				end)
+				if not ok then
+					warn("[Status] Lỗi checkPullLevel: " .. tostring(err))
+				end
+				SetItemState(i, hasPullLevel)
+			else
+				local hasItem = false
+				local ok, err = pcall(function()
+					hasItem = CheckItem(itemName)
+				end)
+				if not ok then
+					warn("[Status] Lỗi CheckItem(" .. itemName .. "): " .. tostring(err))
+				end
+				SetItemState(i, hasItem)
+			end
+		end
+
+		SetItemState(6, seaLevel >= 1)
+		SetItemState(7, seaLevel >= 2)
+		SetItemState(8, seaLevel >= 3)
+
+		task.wait(10)
+	end
+end)
 
 return Kaitun
